@@ -1171,3 +1171,34 @@ D.daily.revision.series={ // 日-10，同主題每日題型，作期長短決定
 };
 
 D.daily.revision.guessGap=.24; // G-10，猜瓜重選項間距（kg，試玩值）
+
+D.daily.farm = {
+  pollTotal:28, pollStep:4, beePrice:100, // G-4，冠冠確認
+  inspectAP:[2,1], weedDays:3, weedNames:['零星冒草','雜草成簇','雜草成片','草滿田畦','雜草蓋過走道'], // 日-管理
+  insect:['0 隻','1～2 隻','3～5 隻','6～10 隻','11～20 隻','數不清了'],
+  spots:['0 個','1～2 個','3～5 個','6～10 個','葉片枯死了'],
+  intervals:{pest0:2,pest1:3,pest2:2,mildew:3}, // 日-09 試玩間隔
+  nutrients:[90,85,85], minimum:[80,65,70], uptake:[2,1.4,1.8], // 日-07 暫定
+  formulas:[[30,10,10],[15,15,15]], diminishing:90, excess:100, vigorLimit:1.2, speedLimit:.15
+};
+D.daily.revision.inspections=['巡田','檢查黏蟲紙'];
+D.daily.tasks.find(t=>t.id==='poll').points=D.daily.farm.pollTotal;
+D.jobs[1].hint='採下大小剛好和過老的小黃瓜。過老瓜漏採扣分，太小的留在藤上。';
+D.events.find(e=>e[0]==='mildew')[3].push(['噴藥',70,'spray'],['非農藥資材',40,'material']); // 日-09 沿用防治價格
+
+D.daily.market = { // M-6～M-12，試玩用題庫
+  items:['小黃瓜','櫛瓜','甜椒','番茄','洋香瓜','南瓜'],
+  seedQuestions:[], // M-12 由冠冠提供 {image, options, answer}
+  jobs:[
+    [6,'市場理貨','照出貨單，在貨架找出指定蔬果。',5],
+    [7,'蔬果箱打包','記住訂單，把正確數量的蔬果放進箱子。',3],
+    [8,'幫鄰田巡田','記住有病斑的位置，再點出來。',4],
+    [9,'市場收錢找零','算出這筆生意該找多少錢。',5],
+    [10,'數瓜入庫','看清瓜籃裡有幾顆，記好再報數。',4],
+    [11,'蔬果箱裝箱拼圖','旋轉貨品，拖曳或點箱格放入，盡量裝滿。',1],
+    [12,'看種子猜作物','看照片，找出是哪種作物的種子。',5]
+  ]
+};
+for(const [n,name,hint,questions] of D.daily.market.jobs){
+  D.jobs.push({id:'M-'+n,name,hint,questions,enabled:n!==12||D.daily.market.seedQuestions.length>=questions});
+}
