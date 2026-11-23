@@ -531,3 +531,8 @@ button,.option {
 .wheel span{position:absolute;top:8%;left:calc(50% - 8px);height:42%;width:16px;writing-mode:vertical-rl;text-align:start;line-height:16px;font-size:11px;font-weight:bold;transform:rotate(var(--sector));transform-origin:50% 100%}
 .wheel.spun{transform:rotate(var(--end));animation:spinIn 900ms ease-out}.center{text-align:center}@keyframes spinIn{from{transform:rotate(0)}to{transform:rotate(var(--end))}}
 @media(prefers-reduced-motion:reduce){.wheel.spun{animation:none}}
+
+.plantStats{display:grid;grid-template-columns:repeat(4,1fr);background:#edf2df;border:1px solid #b5c5a5;border-radius:10px;margin:12px 0;padding:8px 3px;text-align:center}
+.plantStats small{display:block;margin:0;font-size:.77rem}.plantStats b{font-size:1.05rem;font-variant-numeric:tabular-nums}
+#farmCanvas{width:min(100%,420px);height:auto;display:block;margin:0 auto;touch-action:none;border-radius:12px;border:2px solid #658060}
+.arcStatus{display:flex;justify-content:space-between;padding:10px 5px;font-variant-numeric:tabular-nums}

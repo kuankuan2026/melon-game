@@ -258,6 +258,7 @@ function amend(f) {
     worse = 1;
   state.flags.compost = picked.includes(3);
   state.flags.ridge = !!f.ridge;
+  state.flags.ridgeGain=soilQuality('ridge');
   state.flags.clean = !!f.clean;
   state.flags.hardWet = state.wetSoil && !f.wait;
   for (const i of picked) {
@@ -270,8 +271,8 @@ function amend(f) {
     }
     const effect = item.effects[state.soil];
     log(ref, effect);
-    const quality = i === 0 ? state.limeQuality ?? 1 : 1;
-    if (effect.includes('解除')) factor = Math.min(factor, 1 - quality);else if (effect.includes('減半')) factor = Math.min(factor, .5);
+    const quality = soilQuality(i);
+    if (effect.includes('解除')) factor = Math.min(factor, 1 - quality);else if (effect.includes('減半')) factor = Math.min(factor, 1 - .5*quality);
     if (effect.includes('加倍')) worse = 2;
     for (const m of effect.matchAll(/(根系|樹勢|蟲害壓力) ([+−-])(\d+)/g)) {
       const val = Number(m[3]) * (m[2] === '+' ? 1 : -1);
@@ -299,7 +300,7 @@ function amend(f) {
   if (f.clean) {
     expense(D.cost.clean, '清園浸水');
     delta('3-D', '清園', {
-      pests: D.soilRules.cleanPests
+      pests: D.soilRules.cleanPests*soilQuality('clean')
     });
   }
   if (f.ridge) expense(D.cost.ridge, '高畦、開排水溝');
@@ -480,6 +481,7 @@ function applyWork(keys, skipped) {
   if (i === 1) {
     let prob = has('hand') ? T.set[0] : has('bee') ? T.set[1] : T.set[2];
     if (!has('none')) prob -= Number(['過量', '嚴重過量'].includes(f.base)) * D.base.setLoss + Number(!!f.hot) * T.other.heatSet + Number(!has('midNode')) * T.other.wrongNode + Number(s.leaf > D.plant.large) * T.other.softLeafSet;
+    if(!has('none') && s && state.daily.tasks.poll?.quality!=null)prob*=.85+.15*state.daily.tasks.poll.quality;
     log('第13題', '著果判定', {
       prob
     });
@@ -495,6 +497,7 @@ function applyWork(keys, skipped) {
   }
   if (i === 2) {
     s.count = has('three') ? 3 : has('two') ? 2 : 1;
+    if(has('sound') && state.daily.currentQuality!=null)scaleDelta('G-5','挑果完成度',e.scar,1-state.daily.currentQuality);
     delta('P-6', '多留果的固定大小扣幅', {
       size: state.fruit.size * (D.multi.size[s.count - 1] - 1)
     });
@@ -504,7 +507,7 @@ function applyWork(keys, skipped) {
       virus: D.infection.dirty[1]
     });
     if (has('strip') && state.fruit) state.fruit.stem = 0;
-    if (has('untied') && dice('untied') < T.breakRate[state.actual]) return terminal('snap');
+    if ((has('untied') || (has('tie') && dice('吊繩作業')>(state.daily.currentQuality??1))) && dice('untied') < T.breakRate[state.actual]) return terminal('snap');
   }
   if (i === 4 && has('skipFeed')) {
     const mul = f.base === '太少' ? 2 : 1;
@@ -533,7 +536,7 @@ function applyWork(keys, skipped) {
   });
   if (i === 8 && has('normal') && dice('late crack') < T.lateCrack) return terminal('crack');
   if (i === 9) state.cut = dateAt(state.days + (has('early') ? -T.harvestShift : has('late') ? T.harvestShift : 0));
-  const careful = !skipped && !keys.some(k => ['double', 'dirtyTool', 'keepBud', 'lowNode', 'highNode', 'none', 'scar', 'two', 'three', 'grow', 'strip', 'untied', 'nitrogen', 'skipFeed', 'dry', 'wet', 'normal', 'stop', 'early', 'late', 'tangle'].includes(k));
+  const careful = !skipped && (state.daily.currentQuality??1)>=.8 && !keys.some(k => ['double', 'dirtyTool', 'keepBud', 'lowNode', 'highNode', 'none', 'scar', 'two', 'three', 'grow', 'strip', 'untied', 'nitrogen', 'skipFeed', 'dry', 'wet', 'normal', 'stop', 'early', 'late', 'tangle'].includes(k));
   if (careful) {
     f.good = (f.good || 0) + 1;
     if (i < 2) delta('P-2', '結果前照顧得當', {
@@ -598,7 +601,7 @@ function resolveEvent(id, action) {
     if (dice('flood' + id) < (hard ? D.soilRules.hardFlood : T.flood)) {
       const damage = hard ? state.stats.root : -e.typhoon.root;
       delta('3-E', '河水倒灌', {
-        root: -damage * (f.ridge ? D.soilRules.ridgeDamage : 1)
+        root: -damage * (f.ridge ? 1-(1-D.soilRules.ridgeDamage)*(f.ridgeGain??1) : 1)
       });
     }
   }
@@ -902,7 +905,7 @@ function resultsView() {
   }
   const total = c => state.ledger.filter(x => x.category === c).reduce((s, x) => s + x.amount, 0),
     net = state.coins - D.budget;
-  h += '<h3>這季收支表</h3>' + row('作物收入', total('crop')) + row('打工收入', total('job')) + row('實際花費（已扣退費）', -(total('expense') + total('refund'))) + row('本季淨利', net + ' 金幣') + row('期末錢包', state.coins + ' 金幣') + (net < 0 ? note(D.copy.lossLine) : '') + '<details><summary>逐筆收支</summary>' + state.ledger.map(x => row(x.label, x.amount)).join('') + '</details><div class="actions">' + (fail ? action(state.used ? '本局重來已用過' : D.copy.rewind, 'rewind', true, state.used || !state.snapshot) : '') + action(D.copy.restart, 'new', !fail) + (debug ? action(D.copy.download, 'download') : '') + '</div>';
+  h += '<h3>這季收支表</h3>' + row('作物收入', total('crop')) + row('打工收入', total('job')) + (total('bonus')?row('彩蛋獎金',total('bonus')):'') + row('實際花費（已扣退費）', -(total('expense') + total('refund'))) + row('本季淨利', net + ' 金幣') + row('期末錢包', state.coins + ' 金幣') + (net < 0 ? note(D.copy.lossLine) : '') + '<details><summary>逐筆收支</summary>' + state.ledger.map(x => row(x.label, x.amount)).join('') + '</details><div class="actions">' + (fail ? action(state.used ? '本局重來已用過' : D.copy.rewind, 'rewind', true, state.used || !state.snapshot) : '') + action(D.copy.restart, 'new', !fail) + (debug ? action(D.copy.download, 'download') : '') + '</div>';
   return h;
 }
 let timer = 0,
@@ -1051,6 +1054,7 @@ function render(scroll = true) {
   app.innerHTML = '<section class="screen">' + screen() + '</section>';
   if (!storageOK) app.insertAdjacentHTML('afterbegin', '<small>這個瀏覽器無法保存進度，請在同一頁完成本局。</small>');
   debugPanel();
+  if(state.step==='arc'&&state.daily.arc.start){drawArc(state.daily.arc,arcTime(state.daily.arc));timer=setInterval(arcFrame,50);}
   if (state.step === 'mini' && state.mini?.start) {
     timer = setInterval(miniWave, 90);
   }
@@ -1118,6 +1122,7 @@ function deadline(task) {
 }
 function taskGroups(task) {
   const groups=D.work[task.work][2];
+  if(task.id==='prune')return groups.map(([q,list])=>[q,list.map(([n,,k])=>[n,0,k])]);
   return task.id==='top'?groups.slice(0,1):task.id==='tie'?groups.slice(1):groups;
 }
 function dailyDraw() {
@@ -1136,7 +1141,7 @@ function dailyDraw() {
     if(id==='weed'&&state.flags.clean)p*=T.cleanFactor;
     rollCard(id,p,D.rounds.repeat);
   }
-  for(const job of D.jobs) rollCard(job.id,T.jobEntry,D.rounds.jobLimit);
+
   for(const id of candidates.sort((a,b)=>dice('抽'+a)-dice('抽'+b)).slice(0,D.rounds.cards)) {
     state.counts[id]=(state.counts[id]||0)+1;
     d.ongoing[id]={since:state.round,level:daily.pressureStart,treated:false};
@@ -1153,7 +1158,8 @@ function newRound() {
   for(const t of daily.tasks) {
     if(state.round===calendarDay(t.from)) d.tasks[t.id]={left:t.points,choices:taskGroups(t).map(()=>0),locked:false};
   }
-  grow(false); unlockStage(); dailyDraw(); checkpoint();
+  d.guardOffer=null;d.waterQuality=1;
+  grow(false); unlockStage(); dailyDraw(); prepareDay(); checkpoint();
 }
 function scaleDelta(code,why,effects,scale) {
   delta(code,why,Object.fromEntries(Object.entries(effects).map(([k,v])=>[k,v*scale])));
@@ -1162,11 +1168,11 @@ function workResult(task,missed) {
   const d=state.daily, entry=d.tasks[task.id];
   const options=taskGroups(task).map(([,list],i)=>list[entry.choices[i]]);
   let keys=missed?D.skip[task.work]:options.map(o=>o[2]);
-  d.workIndex=task.work;
+  d.workIndex=task.work;d.currentQuality=entry.quality;
   try {
     decision(task.name+(missed?'／逾期':'／'+options.map(o=>o[0]).join('、')),()=>{
       if(task.id==='top'){
-        if(!missed && keys.includes('top'))state.flags.topped=true;
+        if(!missed && keys.includes('top') && entry.quality>0)state.flags.topped=true;
         else delta('日-05','錯過摘心',T.effects.grow);
         if(state.flags.dirty)delta('P-7','摘心時剪刀未消毒',{virus:D.infection.dirty[1]});
         state.flags.topHandled=true;
@@ -1178,7 +1184,7 @@ function workResult(task,missed) {
         applyWork(keys,missed);
       }
     });
-  }finally{delete d.workIndex;}
+  }finally{delete d.workIndex;delete d.currentQuality;}
   entry.done=true;d.completed.push(task.name+(missed?'（逾期）':''));
   d.logbook.push({day:state.round,text:task.name+(missed?'逾期':'完成')});
 }
@@ -1196,31 +1202,33 @@ function advanceTask(id) {
   const spend=Math.min(entry.left,d.ap,daily.workChunk);
   d.ap-=spend;entry.left-=spend;
   log('日-05',t.name,{spend,left:entry.left});
-  if(!entry.left){
-    if(id==='prune' && entry.choices[2]===0)openFieldGame('prune');
-    else workResult(t,false);
-  }
+  if(entry.played===state.round)taskSession(t,entry,spend,entry.lastGain);
+  else boardGame(t,{type:'task',id,spend});
 }
-function dailyFeed(i) {
+function dailyFeed(i,gain=1) {
   const d=state.daily, price=feedPrice(i);
   if(d.fed||d.ap<daily.applyAP||price==null||price>state.coins)return;
   expense(price,'追肥／'+daily.feedNames[i]);d.ap-=daily.applyAP;d.fed=true;d.fedThisSeason=true;
   decision('追肥／'+daily.feedNames[i],()=>{
-    delta('日-07',daily.feedNames[i],i===0?T.effects.feed:T.effects.nitrogen);
+    if(i===0)scaleDelta('日-07',daily.feedNames[i],T.effects.feed,gain);
+    else delta('日-07',daily.feedNames[i],T.effects.nitrogen);
     if(i===2)delta('日-07','過量傷根',{root:D.base.severeRoot});
   });
   d.message='今天已施肥，花了 '+price+' 金幣。';health();
 }
-function dailyTreat(id,index) {
+function dailyTreat(id,index,gain=1) {
   const d=state.daily, ongoing=d.ongoing[id],event=D.events.find(e=>e[0]===id),opt=event?.[3][index];
   if(!ongoing||ongoing.treated||!opt||!eventAllowed(opt[2])||opt[2]==='pass')return;
   const [name,price,mode]=opt, cost=['spray','daily','material'].includes(mode)?daily.applyAP:1;
   if(d.ap<cost||state.coins<price)return;
   expense(price,name);d.ap-=cost;ongoing.treated=true;
-  decision(event[1]+'／'+name,()=>resolveEvent(id,mode));
-  ongoing.level-=daily.control[mode]??1;
-  if(ongoing.level<=0 || event[2]!==6)delete d.ongoing[id];
-  d.message=(mode==='enemy'?D.copy.enemy+' ':'')+(d.ongoing[id]?'今天有改善，明天還要再看看。':event[1]+'，已處理。');
+  decision(event[1]+'／'+name,()=>{
+    if(id.startsWith('pest')){scaleDelta('C-E',name,T.effects[mode]||{},gain);if(mode==='daily')state.flags.daily=true;}
+    else if(gain>0)resolveEvent(id,mode);
+  });
+  ongoing.level-=(daily.control[mode]??1)*gain;
+  if(ongoing.level<=0 || (event[2]!==6 && gain>0))delete d.ongoing[id];
+  d.message=(mode==='enemy'?D.copy.enemy+' ':'')+(d.ongoing[id]?(gain>0?'今天有改善，明天還要再看看。':'這次處理效果有限，明天還要再看看。'):event[1]+'，已處理。');
   health();
 }
 function endEvents() {
@@ -1247,7 +1255,8 @@ function waterEffect() {
   const i=daily.water.indexOf(band), end=calendarDay(daily.water[i+1]?.[0]??daily.baseDays);
   const scale=1/Math.max(1,end-calendarDay(band[0]));
   if(diff===0){
-    if(kind==='sweet')scaleDelta('日-06','成熟期節水',T.effects.control,scale);
+    if(kind==='sweet')scaleDelta('日-06','成熟期節水',T.effects.control,scale*(d.waterQuality??1));
+    if(d.waterQuality<1 && kind!=='sweet')scaleDelta('日-06','灌水操作偏差',kind==='net'?T.effects.dryNet:T.effects.dry6,scale*(1-d.waterQuality));
     return;
   }
   const wet=diff>0,net=kind==='net';
@@ -1276,7 +1285,9 @@ function closeDay() {
   log('日-01','親自收工',{day:state.round,unused:d.ap});
   if(state.round>=state.days){
     if(!state.fruit){terminal('set');return;}
-    state.cut=dateAt(state.round);harvest();
+    const shift=harvestOptions()[d.harvestChoice??1];
+    if(shift)delta('G-9','採收時機',shift<0?T.effects.early:T.effects.late);
+    state.cut=dateAt(state.round+shift);harvest();
   }else{
     d.message=(d.evening||'昨天收工了。')+(Object.values(d.ongoing).length?'田裡還有狀況要追。':'今天再巡一圈。');
     d.evening='';
@@ -1316,6 +1327,329 @@ function finishFieldGame(){
   }
 }
 
+
+const rev=D.daily.revision;
+function prepareDay(){
+  const d=state.daily;
+  if(d.boardDay===state.round)return;
+  d.boardDay=state.round;d.inspected=[];d.inspections=[];
+  if(!Object.keys(d.ongoing).some(id=>D.jobs.some(j=>j.id===id))){
+    const job=D.jobs[(state.round+Math.floor(dice('打工班表')*D.jobs.length))%D.jobs.length];
+    d.ongoing[job.id]={since:state.round,level:1,treated:false};
+  }
+  state.cards=Object.keys(d.ongoing);
+  const eventCount=state.cards.filter(id=>{
+    if(id.startsWith('M-'))return true;
+    const event=D.events.find(e=>e[0]===id);
+    return event?.[3].some(([,price,mode])=>mode!=='pass'&&eventAllowed(mode)&&price<=state.coins);
+  }).length;
+  const count=Object.values(d.tasks).filter(e=>!e.done).length+eventCount+
+    Number(state.round===state.days||state.coins>=feedPrice(0))+Number(!!currentBand(daily.water)&&state.round<state.days);
+  const sites=rev.inspections.map((_,i)=>i).sort((a,b)=>dice('巡田'+a)-dice('巡田'+b));
+  d.inspections=sites.slice(0,Math.max(0,rev.minimum-count));
+}
+function startArc(kind,context,variant=0){
+  const descriptor=rev.games[kind]||rev.games.look;
+  let [title,hint,mode,label]=descriptor;
+  if(kind==='prune'){
+    [title,mode]=rev.prune[variant%rev.prune.length];
+    label='低節側芽';
+    hint={slice:'劃過低節側芽，避開主蔓。',avoid:'點掉低節側芽，保留標記的留果枝。',memory:'記住要剪的位置，照順序剪掉側芽。',order:'從最低節開始，依序修剪標出的側芽。',timing:'側芽進入剪刀範圍時點一下。',find:'小心看看，找出漏剪的側芽。',trail:'沿主蔓由下往上，劃過亮起的側芽。'}[mode];
+  }
+  const recipe=rev.forms[kind]?.[variant%rev.forms[kind].length];
+  if(recipe){[title,mode,hint,label]=recipe;}
+  if(['feed','water','net','look'].includes(kind)){
+    const route=rev.series[kind],form=route[variant%route.length];
+    [title,mode,hint,label]=form;
+    if(kind==='look')title=rev.inspections[context.index]+'・'+title;
+  }
+  if(kind==='plane')title=rev.boss[Number(context.id.slice(-1))];
+  const sequence=Array.from({length:9},(_,i)=>i).sort((a,b)=>dice(kind+variant+'位置'+a)-dice(kind+variant+'位置'+b));
+  state.daily.arc={kind,context,variant,title,hint,mode,label,sequence,start:0,elapsed:0,hit:0,miss:0,marks:[],stage:0,values:[0,0,0],knob:0.5,player:[.5,.82],shots:[],hazards:[],nextShot:0,nextHazard:0,frame:0,goodTime:0,totalTime:0,power:1};
+  state.step='arc';
+}
+function arcView(){
+  const g=state.daily.arc;
+  const part=g.context.span?'・第 '+(g.variant+1)+'／'+g.context.span+' 款':'';
+  const clue=g.mode==='calendar'?row('授粉日',state.poll)+row('授粉至參考採收',Math.round((Date.parse(dateAt(state.days))-Date.parse(state.poll))/MS)+' 天'):g.mode==='guess'?field():'';
+  return head('田間小遊戲'+part,g.title)+note(g.hint)+clue+(g.start?
+    '<div class="arcStatus"><span id="arcClock"></span><span id="arcScore"></span></div><canvas id="farmCanvas" width="360" height="320" aria-label="'+escapeHTML(g.title)+'"></canvas><small>點選或滑動田區操作</small>':
+    action('開始挑戰','arcStart',true));
+}
+function arcScore(g){
+  if(['balance','net','depth'].includes(g.mode))return Math.round(100*g.goodTime/Math.max(rev.duration*.9,g.totalTime));
+  const goal=arcGoal(g);
+  return Math.round(100*clamp((g.hit-g.miss*.35)/goal,0,1));
+}
+function guardPosition(i,t){
+  const angle=i*Math.PI/2,progress=(t*.29+i*.19)%1;
+  return [.5+Math.cos(angle)*(.49-progress*.41),.5+Math.sin(angle)*(.49-progress*.41)];
+}
+function arcGoal(g){
+  return ({paint:9,slice:5,avoid:5,memory:4,order:5,trail:5,timing:4,find:3,node:1,swap:3,portion:3,scale:2,pipes:3,clean:4,ridge:5,calendar:1,guess:1,guard:5,plane:10})[g.mode]||1;
+}
+function arcDays(task){return deadline(task)-calendarDay(task.from)+1;}
+function boardGame(t,ctx){
+  const variant=state.round-calendarDay(t.from);
+  startArc(t.id,{...ctx,span:arcDays(t)},variant);
+}
+function arcTarget(g){
+  return g.sequence[(g.stage+g.variant)%9];
+}
+function arcTime(g){return Math.max(0,(Date.now()-g.start)/1000);}
+function oscillate(g,time){
+  return .5+.34*Math.sin(time*(1.65+(g.variant%4)*.18)+g.variant);
+}
+function waterTarget(g,t){
+  return g.mode==='depth'?.53+.19*Math.sin(t*1.15+g.variant):.32+.14*(g.context.value??1)+.05*Math.sin(t+g.variant);
+}
+function targetWidth(g){
+  if(g.mode==='net')return cultivar().id==='glass'?.065:.105;
+  return .14;
+}
+function bossX(g,t){
+  const type=Number(g.context.id?.slice(-1))||0;
+  return .5+(type===0?.32*Math.sin(t*2.4):type===1?.19*Math.sin(t*.8):.3*Math.sin(t*1.5));
+}
+function flyFrame(g,t,dt){
+  const bx=bossX(g,t),type=Number(g.context.id.slice(-1));
+  if(t>=g.nextShot){g.shots.push([g.player[0],g.player[1]-.05]);g.nextShot=t+.22;}
+  if(t>=g.nextHazard){
+    const aim=(g.player[0]-bx)*.29;
+    for(const dx of (type===0?[aim]:type===1?[-.12,.12]:[-.19,aim,.19]))g.hazards.push([bx,.22,dx]);
+    g.nextHazard=t+(type===0?.52:type===1?.74:.95);
+  }
+  for(const s of g.shots){s[1]-=dt*.94;if(s[1]<.24&&s[1]>.09&&Math.abs(s[0]-bx)<.105){g.hit++;s[1]=-1;}}
+  g.shots=g.shots.filter(s=>s[1]>0);
+  for(const b of g.hazards){b[0]+=b[2]*dt;b[1]+=dt*.47;if(Math.hypot(b[0]-g.player[0],b[1]-g.player[1])<.06){g.miss++;b[1]=2;}}
+  g.hazards=g.hazards.filter(b=>b[1]<1.05);
+}
+function arcFrame(){
+  if(state?.step!=='arc')return;
+  const g=state.daily.arc;if(!g.start)return;
+  const t=arcTime(g),dt=clamp(t-g.frame,0,.15);g.frame=t;
+  if(['balance','net','depth'].includes(g.mode)){
+    if(g.mode==='depth')g.knob=clamp(g.knob+dt*(held?.6:-.44),0,1);
+    else g.knob=clamp(g.knob+dt*(g.mode==='net'?.19:.10)*Math.sin(t*(1.4+g.variant*.09)+g.variant+.7),0,1);
+    g.totalTime+=dt;
+    if(Math.abs(g.knob-waterTarget(g,t))<=targetWidth(g))g.goodTime+=dt;
+  }
+  if(g.mode==='plane')flyFrame(g,t,dt);
+  if(t>=rev.duration||g.hit>=arcGoal(g)){finishArc();return;}
+  drawArc(g,t);
+  const clock=document.getElementById('arcClock'),score=document.getElementById('arcScore');
+  if(clock)clock.textContent='剩 '+Math.ceil(rev.duration-t)+' 秒';
+  if(score)score.textContent='操作 '+arcScore(g)+' 分';
+}
+function cellFor(x,y){return clamp(Math.floor(y/105),0,2)*3+clamp(Math.floor(x/120),0,2);}
+function harvestOptions(){return [-T.harvestShift,0,T.harvestShift];}
+function guessOptions(g){
+  const kg=assess().kg;
+  const gap=rev.guessGap;
+  return Array.from({length:3},(_,i)=>Math.max(.05,kg+(i-g.sequence[0]%3)*gap).toFixed(2));
+}
+function cellText(g,i,t){
+  const done=g.marks.includes(i),goal=arcGoal(g),pos=g.sequence.indexOf(i),right=arcTarget(g);
+  switch(g.mode){
+    case 'paint':return done?'已撒':'畦土';
+    case 'slice':case 'avoid':return done?'剪好了':pos<goal?g.label:(pos%2?'留果枝':'主蔓');
+    case 'memory':return g.marks.includes(i)?'完成':t<2.6&&pos<4?'記 '+(pos+1):g.label+' '+(i+1);
+    case 'order':case 'trail':return done?'完成':pos<goal?(g.mode==='order'?'順序 '+(pos+1):(pos===g.stage?'◎ ':'○ ')+(pos+1)):'·';
+    case 'find':return i===right?g.label:({select:'端正幼果',poll:'未開花苞',tie:'已固定',water:'正常水滴',seal:'壓好的膜',mildew:'健康葉',prune:'主蔓'})[g.kind]||'正常';
+    case 'node':return i===g.sequence[0]?'第 25 節':'第 '+(16+pos)+' 節';
+    case 'pipes':return i>=3&&i<6?((g.values[i-3]+g.sequence[i])%4===0?'━':'┃┏┓'[((g.values[i-3]+g.sequence[i])%4)-1]):i===0?'入口 ↘':i===8?'↘ 出口':'田埂';
+    case 'portion':return i===0?'半勺':i===1?'整勺':i>=3&&i<=5?g.values[i-3]+'／'+(i-1)+' 份':'';
+    case 'swap':return i<6?(g.marks.includes(i%3)?'已交換':i<3?'表土 '+(i+1):'底土 '+(i-2)):'';
+    case 'scale':return i<3?'＋'+[1,2,4][i]+' 勺':i===4?g.values[0]+'／'+(5+g.stage+g.variant%3):i===6?'重秤':i===8?'送出':'';
+    case 'clean':return i===8?'開水閘':g.marks.includes(i)?'已清':g.sequence.filter(k=>k!==8).slice(0,3).includes(i)?'殘株':'瓜苗';
+    case 'ridge':return [0,2].includes(i)?'堆畦 '+g.values[i===0?0:1]+'/2':i===4?'挖通溝槽':'畦溝';
+    case 'calendar':return i>=3&&i<6?dateAt(state.days+harvestOptions()[i-3]).slice(5):'';
+    case 'guess':return i>=3&&i<6?guessOptions(g)[i-3]+' kg':'';
+    case 'guard':return i===right?'害蟲':i===(right+4)%9?'天敵':i===4?'洋香瓜':'';
+    default:return '';
+  }
+}
+function drawFieldIcon(c,g,word,x,y){
+  c.save();c.translate(x,y);c.lineWidth=2.7;c.lineCap='round';c.strokeStyle='#365a44';c.fillStyle='#829d64';
+  const line=(...p)=>{c.beginPath();c.moveTo(p[0],p[1]);for(let k=2;k<p.length;k+=2)c.lineTo(p[k],p[k+1]);c.stroke();};
+  const oval=(x,y,rx,ry,angle=0)=>{c.beginPath();c.ellipse(x,y,rx,ry,angle,0,Math.PI*2);c.fill();c.stroke();};
+  if(g.kind==='prune'||g.kind==='mildew'||g.kind==='weed'||g.kind==='top'||g.kind==='tie'){
+    line(-8,17,0,-15);if(!/完成|剪好了/.test(word)){line(-4,6,8,-2);oval(12,-5,12,5,-.5);}
+    if(/主蔓|留果/.test(word)){oval(-9,-3,8,4,.5);if(word==='留果枝'){c.fillStyle='#c6a34d';oval(10,5,5,6);}}
+    if(word.includes('病斑')){c.fillStyle='#f6f4e6';oval(10,-6,3,2);oval(16,-8,2,1);}
+  }else if(g.kind==='select'){
+    c.fillStyle='#96ad6f';oval(0,2,14,18);line(0,-15,3,-21,9,-22);
+    if(word==='擦傷幼果'){c.strokeStyle='#955e38';line(-9,4,-2,1,2,4,8,0);}
+  }else if(['paint','clean','swap','ridge','portion','memory','find','scale'].includes(g.mode)){
+    c.fillStyle=word.includes('已')?'#b6b67e':'#c9ae79';oval(0,5,24,9);c.strokeStyle='#926f42';line(-14,5,13,3);
+    if(g.mode==='paint'&&word==='已撒'){c.fillStyle='#fff9e1';for(let k=0;k<9;k++)c.fillRect(-16+k*4,1+(k%3)*3,3,2);}
+    if(g.mode==='clean'&&!word.includes('清')){c.strokeStyle=word==='殘株'?'#996239':'#647f45';line(-7,1,-3,-10,7,-14);}
+  }
+  c.restore();
+}
+function drawArc(g,t){
+  const canvas=document.getElementById('farmCanvas');if(!canvas)return;
+  const c=canvas.getContext('2d'),w=360,h=320;
+  c.fillStyle='#edf0d9';c.fillRect(0,0,w,h);
+  function label(msg,x,y,size=18,col='#234f42'){c.fillStyle=col;c.font='bold '+size+'px sans-serif';c.textAlign='center';c.fillText(msg,x,y);}
+  function dot(x,y,r,color){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=color;c.fill();}
+  if(g.mode==='guard'){
+    label('瓜',180,169,31);for(let i=0;i<4;i++){const [x,y]=guardPosition(i,t);const ally=(i+g.stage)%4===0;dot(x*w,y*h,23,ally?'#89bba4':'#df997a');label(ally?'天敵':'害蟲',x*w,y*h+5,14);}
+    return;
+  }
+  if(g.mode==='plane'){
+    c.fillStyle='#224c45';c.fillRect(0,0,w,h);
+    for(let i=0;i<17;i++)dot((i*83)%w,(i*67+t*28)%h,2,'#90b592');
+    const x=bossX(g,t)*w;label(g.title,x,30,16,'#fff4cd');label(['薊','蚜','粉'][Number(g.context.id.slice(-1))],x,69,40,'#ffbe77');
+    for(let i=0;i<6;i++){const side=i%2?1:-1;c.beginPath();c.moveTo(x+side*12,49+Math.floor(i/2)*6);c.lineTo(x+side*(24+4*Math.sin(t*7)),40+Math.floor(i/2)*11);c.strokeStyle='#ffc18a';c.lineWidth=3;c.stroke();}
+    for(const [x,y] of g.shots)dot(x*w,y*h,4,'#ffe896');
+    for(const [x,y] of g.hazards){dot(x*w,y*h,8,'#ff9883');if(g.context.id==='pest1')label('蚜',x*w,y*h+5,12,'#533623');if(g.context.id==='pest2'){dot(x*w-5,y*h-4,3,'#fff');dot(x*w+5,y*h-4,3,'#fff');}}
+    const [px,py]=g.player;label('✈',px*w,py*h+8,35,'#fff');return;
+  }
+  if(['balance','net','depth','timing'].includes(g.mode)){
+    const timing=g.mode==='timing',target=timing?.5:waterTarget(g,t),width=timing?.15:targetWidth(g);
+    if(g.mode==='depth'){
+      c.fillStyle='#b99666';c.fillRect(0,51,360,79);c.strokeStyle='#765835';c.lineWidth=9;c.beginPath();
+      for(let x=0;x<=360;x+=5){const y=51+78*waterTarget(g,t+(x-180)/135);if(x===0)c.moveTo(x,y);else c.lineTo(x,y);}c.stroke();
+      c.fillStyle='#4f6253';c.fillRect(176,25,8,26+78*g.knob);label('耕刀',143,40,13);
+    }
+    if(g.kind==='poll'){for(let i=0;i<5;i++){const a=i*2*Math.PI/5,r=10+(1-Math.abs(oscillate(g,t)-.5)*2)*18;dot(180+r*Math.cos(a),76+r*Math.sin(a),14,'#e8bb4c');}dot(180,76,10,'#996b36');}
+    if(g.kind==='net'){
+      c.save();c.beginPath();c.ellipse(180,77,44,51,0,0,7);c.clip();c.fillStyle='#94ac65';c.fillRect(120,20,120,115);
+      c.strokeStyle='#e0e7b2';c.lineWidth=2;
+      for(let i=0;i<2+Math.floor(g.goodTime*2);i++){c.beginPath();c.moveTo(128+i*7,22);c.bezierCurveTo(200-i,83,130+i*4,88,150+i*8,133);c.stroke();}
+      c.restore();
+    }else if(g.kind!=='poll'&&g.mode!=='depth')label(timing?(Math.abs(oscillate(g,t)-.5)<width?'現在！':g.label):g.label,180,90,29);
+    c.fillStyle='#ced5b6';c.fillRect(20,147,320,36);c.fillStyle='#83b98a';c.fillRect(20+320*(target-width),147,640*width,36);
+    dot(20+320*(timing?oscillate(g,t):g.knob),165,10,'#9c592d');
+    label(timing?'點一下抓時機':g.mode==='depth'?'按住下降　放開上升':'− 減少　　　　　增加 ＋',180,259);
+    return;
+  }
+  for(let i=0;i<9;i++){
+    const x=i%3*120,y=Math.floor(i/3)*105,word=cellText(g,i,t);
+    c.fillStyle=g.marks.includes(i)?'#c3dcb3':i===g.selected?'#f4d790':'#faf7e9';c.fillRect(x+3,y+3,114,99);
+    if(word){drawFieldIcon(c,g,word,x+60,y+34);label(word,x+60,y+76,word.length>6?14:19);}
+  }
+}
+let held=false, lastArcCell=-1;
+function playCell(g,i){
+  const pos=g.sequence.indexOf(i),goal=arcGoal(g),t=arcTime(g);
+  function mark(){if(g.marks.includes(i))return;g.marks.push(i);g.hit++;g.stage++;}
+  switch(g.mode){
+    case 'paint':if(g.marks.includes(i))g.miss++;else mark();break;
+    case 'slice':case 'avoid':if(pos<goal)mark();else g.miss++;break;
+    case 'memory':if(t<2.6)return;
+    case 'order':case 'trail':if(pos===g.stage)mark();else if(!g.marks.includes(i))g.miss++;break;
+    case 'find':case 'guard':if(i===arcTarget(g)){g.hit++;g.stage++;}else g.miss++;break;
+    case 'node':if(pos===0)g.hit++;else g.miss++;break;
+    case 'timing':if(t-(g.lastTap??-1)<.35)return;g.lastTap=t;if(Math.abs(oscillate(g,t)-.5)<.15)g.hit++;else g.miss++;break;
+    case 'net':case 'balance':g.knob=clamp(g.knob+(i%3===0?-.065:.065),0,1);break;
+    case 'pipes':if(i<3||i>5)return;g.values[i-3]++;g.hit=g.values.filter((v,j)=>(v+g.sequence[j+3])%4===0).length;break;
+    case 'portion':if(i<2)g.power=i+1;else if(i>=3&&i<=5){const j=i-3;g.values[j]+=g.power;if(g.values[j]>i-1){g.values[j]=0;g.miss++;}g.hit=g.values.filter((v,j)=>v===j+2).length;}break;
+    case 'swap':if(i>=6)return;if(i<3){g.selected=i;return;}if(g.selected===i-3&&!g.marks.includes(i-3)){g.marks.push(i-3);g.hit++;}else g.miss++;g.selected=null;break;
+    case 'scale':if(i<3)g.values[0]+=[1,2,4][i];else if(i===6)g.values[0]=0;else if(i===8){if(g.values[0]===5+g.stage+g.variant%3){g.hit++;g.stage++;}else g.miss++;g.values[0]=0;}break;
+    case 'clean':if(i===8&&g.hit===3)g.hit++;else if(g.sequence.filter(k=>k!==8).slice(0,3).includes(i))mark();else g.miss++;break;
+    case 'ridge':if(i===0||i===2){const j=i===0?0:1;if(g.values[j]<2){g.values[j]++;g.hit++;}}else if(i===4&&g.hit===4)g.hit++;else g.miss++;break;
+    case 'calendar':case 'guess':if(i<3||i>5)return;g.choice=i-3;g.hit=Number(g.mode==='calendar'?g.choice===1:g.choice===g.sequence[0]%3);finishArc();return;
+  }
+}
+function arcPointer(ev){
+  if(state?.step!=='arc'||!state.daily.arc.start||ev.target.id!=='farmCanvas')return;
+  ev.preventDefault();const canvas=ev.target,r=canvas.getBoundingClientRect(),g=state.daily.arc;
+  const x=clamp((ev.clientX-r.left)/r.width,0,.999),y=clamp((ev.clientY-r.top)/r.height,0,.999);
+  if(ev.type==='pointerdown'){held=true;lastArcCell=-1;canvas.setPointerCapture(ev.pointerId);}
+  if(!held)return;
+  if(g.mode==='plane')g.player=[clamp(x,.04,.96),clamp(y,.3,.95)];
+  else if(g.mode==='guard'&&ev.type==='pointerdown'){
+    const i=[0,1,2,3].find(i=>{const [px,py]=guardPosition(i,arcTime(g));return Math.hypot(px-x,py-y)<.1;});
+    if(i!=null){if((i+g.stage)%4===0)g.miss++;else{g.hit++;g.stage++;}}
+  }
+  else if(ev.type==='pointerdown'||['paint','trail','slice'].includes(g.mode)){
+    const cell=cellFor(x*360,y*320);
+    if(cell!==lastArcCell){lastArcCell=cell;playCell(g,cell);}
+  }
+  if(state.step==='arc'){persist();arcFrame();}
+}
+app.addEventListener('pointerdown',arcPointer);
+app.addEventListener('pointermove',arcPointer);
+window.addEventListener('pointerup',()=>{held=false;lastArcCell=-1;});
+window.addEventListener('pointercancel',()=>{held=false;lastArcCell=-1;});
+
+
+function soilQueue(){
+  const f=state.form,d=state.daily;
+  d.soilScores={};
+  d.soilList=(f.improve||[]).map(i=>({key:String(i),kind:rev.soilKinds[i]}));
+  if(f.clean)d.soilList.push({key:'clean',kind:'clean'});
+  if(f.ridge)d.soilList.push({key:'ridge',kind:'ridge'});
+  nextSoil();
+}
+function nextSoil(){
+  const next=state.daily.soilList.shift();
+  if(next)startArc(next.kind,{type:'soil',key:next.key});
+  else{state.step='amend';decision('土壤改良',()=>amend(state.form));}
+}
+function soilQuality(key){return state.daily.soilScores?.[key]??(key===0?state.limeQuality:undefined)??1;}
+function hirePrune(){
+  const task=daily.tasks.find(t=>t.id==='prune'),entry=state.daily.tasks.prune;
+  if(!entry||entry.done||state.round>deadline(task))return;
+  const price=entry.left*rev.hirePerPoint;
+  if(price>state.coins)return;
+  expense(price,'整枝請工');entry.quality=((entry.earned||0)+entry.left)/task.points;
+  entry.left=0;entry.locked=true;workResult(task,false);
+  state.daily.message='已付 '+price+' 金幣，剩下的整枝今天完成。';
+}
+function taskSession(task,entry,spend,gain){
+  entry.earned=(entry.earned||0)+spend*gain;entry.quality=entry.earned/task.points;
+  entry.played=state.round;entry.lastGain=gain;
+  if(entry.left===0)workResult(task,false);
+}
+function finishArc(){
+  if(state.step!=='arc')return;
+  const d=state.daily,g=d.arc,ctx=g.context;
+  const score=arcScore(g),gain=scoreReward(score);
+  clearInterval(timer);held=false;delete d.arc;state.step='round';
+  const summary=g.title+' '+score+' 分，完成度獎勵 '+Math.round(gain*100)+'%。';
+  d.lastScore=summary;log('日-10',summary,{kind:g.kind,variant:g.variant});
+  switch(ctx.type){
+    case 'soil':d.soilScores[ctx.key]=gain;nextSoil();break;
+    case 'sow':state.step='nursery';decision('自己播種育苗',()=>sow(state.form));break;
+    case 'sample':
+      state.testGuides=Math.ceil(gain*daily.soilGuide.length);state.step='amend';break;
+    case 'task':{
+      const task=daily.tasks.find(t=>t.id===ctx.id);
+      taskSession(task,d.tasks[ctx.id],ctx.spend,gain);break;
+    }
+    case 'feed':dailyFeed(ctx.value,gain);break;
+    case 'water':if(d.water==null)d.ap--;d.water=ctx.value;d.waterQuality=gain;break;
+    case 'event':dailyTreat(ctx.id,ctx.index,gain);
+      if(g.kind==='plane'&&state.step!=='result')d.guardOffer=ctx.id;break;
+    case 'guard':if(gain)money(Math.round(rev.guardBonus*gain),'黏紙守塔加分','bonus');break;
+    case 'inspect':d.ap-=rev.training;d.inspected.push(ctx.index);
+      d.message=rev.inspections[ctx.index]+'完成。'+[D.labels.leaves+' '+state.stats.leaves+' 片',appearance(),soil().clue,Object.keys(d.ongoing).filter(k=>k.startsWith('pest')).map(k=>D.events.find(e=>e[0]===k)[1]).join('、')||'今天黏紙沒有新的蟲訊。'][ctx.index];
+      d.logbook.push({day:state.round,text:d.message});break;
+    case 'calendar':
+      d.harvestChoice=g.choice??1;d.calendarDone=true;
+      if(state.fruit&&state.branch!=='other')startArc('guess',{type:'guess'});
+      else closeDay();break;
+    case 'guess':
+      if(gain)money(rev.guessBonus,'猜瓜重彩蛋','bonus');
+      closeDay();break;
+  }
+  persist();render();
+}
+function statsView(){
+  const s=state.stats;
+  const box=(title,v)=>'<div><small>'+title+'</small><b>'+v+'</b></div>';
+  return '<div class="plantStats">'+box('生長勢',round(s.vigor)+'／'+state.vmax)+box('根系',round(s.root)+'／'+rev.rootMax)+box('葉片數',round(s.leaves)+' 片')+box('葉片大小',round(s.leaf))+'</div>';
+}
+function extrasView(){
+  const d=state.daily;
+  const list=d.inspections||[];
+  return (d.guardOffer?action('黏紙守塔・試玩加分關','guard'):'')+
+    list.map(i=>'<article class="panel cardHead"><h3>'+rev.inspections[i]+'</h3>'+action(d.inspected.includes(i)?'今天已巡過':'巡田・1 點','inspect:'+i,false,d.inspected.includes(i)||!d.ap)+'</article>').join('');
+}
+
 let menuPage='';
 function star(v){return '★'.repeat(v)+'☆'.repeat(5-v);}
 function varietyInfo(c,full){
@@ -1351,7 +1685,7 @@ function gameFieldView(){
 }
 function fieldTaskView(t){
   const d=state.daily,e=d.tasks[t.id],active=d.open===t.id,price=taskPrice(t);
-  return '<article class="panel"><div class="cardHead"><div><div class="tag">第 '+deadline(t)+' 天收工前</div><h3>'+t.name+'</h3></div>'+action(active?'收起':'查看工作','showTask:'+t.id)+'</div>'+row('剩餘工作量',e.left+' 點')+(active?taskGroups(t).map(([label,list],i)=>'<h3>'+label+'</h3>'+(e.locked?'<p>'+escapeHTML(list[e.choices[i]][0])+'</p>':opts('dailyOpt:'+t.id+':'+i,list,e.choices[i],false,state.coins-taskPrice(t)+list[e.choices[i]][1]))).join('')+action('投入 '+Math.min(daily.workChunk,d.ap,e.left)+' 點'+(price?'・付 '+price+' 金幣':''),'advance:'+t.id,true,!d.ap||price>state.coins):'')+'</article>';
+  return '<article class="panel"><div class="cardHead"><div><div class="tag">第 '+deadline(t)+' 天收工前</div><h3>'+t.name+'</h3></div>'+action(active?'收起':'查看工作','showTask:'+t.id)+'</div>'+row('剩餘工作量',e.left+' 點')+(active?taskGroups(t).map(([label,list],i)=>'<h3>'+label+'</h3>'+(e.locked?'<p>'+escapeHTML(list[e.choices[i]][0])+'</p>':opts('dailyOpt:'+t.id+':'+i,list,e.choices[i],false,state.coins-taskPrice(t)+list[e.choices[i]][1]))).join('')+action('投入 '+Math.min(daily.workChunk,d.ap,e.left)+' 點'+(price?'・付 '+price+' 金幣':''),'advance:'+t.id,true,!d.ap||price>state.coins)+(t.id==='prune'?action('請人完成・'+e.left*rev.hirePerPoint+' 金幣・0 點','hirePrune',false,state.coins<e.left*rev.hirePerPoint):''):'')+'</article>';
 }
 function eventView(id,o){
   const d=state.daily,job=D.jobs.find(j=>j.id===id);
@@ -1366,15 +1700,16 @@ function eventView(id,o){
   }).join('')+(id==='freeze'?'<p>收工時判定植株能不能撐住。</p>':'')+'</article>';
 }
 function dayView(){
+  prepareDay();
   const d=state.daily,g=d.growth,band=currentBand(daily.water),open=daily.tasks.filter(t=>d.tasks[t.id]&&!d.tasks[t.id].done);
   const info=state.round<=calendarDay(30)?'葉 '+Math.max(0,Math.round(state.stats.leaves))+' 片'+(g.height!=null?'・株高 '+g.height+' cm':''):(state.poll?'授粉日 '+state.poll:appearance());
   const stage=phase()[1];
-  let h='<div class="eyebrow">逐日田間手記　／　'+dateAt(state.round)+'</div><div class="dayHead"><h2>第 '+state.round+' 天</h2><span class="seasonTag">'+stage+'</span></div><div class="track"><i style="width:'+Math.min(100,state.round/state.days*100)+'%"></i></div>'+field()+'<div class="dayMeta">'+escapeHTML(info)+'</div>';
+  let h='<div class="eyebrow">逐日田間手記　／　'+dateAt(state.round)+'</div><div class="dayHead"><h2>第 '+state.round+' 天</h2><span class="seasonTag">'+stage+'</span></div><div class="track"><i style="width:'+Math.min(100,state.round/state.days*100)+'%"></i></div>'+statsView()+field()+'<div class="dayMeta">'+escapeHTML(info)+'</div>';
   if(d.message)h+='<p class="dayMsg" role="status">'+escapeHTML(d.message)+'</p>';
   if(open.length)h+='<h3>田裡的工作</h3>'+open.map(fieldTaskView).join('');
   if(Object.keys(d.ongoing).length)h+='<h3>巡田發現</h3>'+Object.entries(d.ongoing).map(([id,o])=>eventView(id,o)).join('');
   if(band&&state.round<state.days)h+='<div class="panel"><div class="tag">'+stage+'</div><h3>今天的水量</h3>'+daily.waterNames.map((n,i)=>action((d.water===i?'✓ ':'')+n,'water:'+i,d.water===i,d.water==null&&!d.ap)).join('')+'<small>用 1 點調整，收工前可改。沒安排就按節水結算。</small></div>';
-  if(!open.length&&!Object.keys(d.ongoing).length&&!band)h+=note('今天沒有到期的工作，看看葉子就能收工。');
+  h+=extrasView();
   if(state.round<state.days)h+='<details class="panel" '+(d.feedOpen?'open':'')+'><summary>施肥</summary><p>今天還能施肥'+(d.fed?' 0':' 1')+' 次，每次 '+daily.applyAP+' 點。</p>'+daily.feedNames.map((n,i)=>{const p=feedPrice(i);return action(n+'・'+p+' 金幣','feed:'+i,false,d.fed||d.ap<daily.applyAP||p>state.coins);}).join('')+'</details>';
   if(d.logbook.length)h+='<details><summary>田間紀錄</summary>'+d.logbook.slice().reverse().map(x=>row('第 '+x.day+' 天',x.text)).join('')+'</details>';
   if(d.lastScore)h+='<small>'+escapeHTML(d.lastScore)+'</small>';
@@ -1388,6 +1723,7 @@ function feedPrice(i){
 }
 function screen(){
   const d=state.daily;
+  if(state.step==='arc')return arcView();
   if(state.step==='round')return dayView();
   if(state.step==='season')return wheelView();
   if(state.step==='fieldGame')return gameFieldView();
@@ -1411,6 +1747,9 @@ function dailyAction(id,arg){
   if(id==='menu'||id==='mainMenu'){menuPage=id==='menu'?arg:'';state=null;render();return true;}
   if(!state)return false;
   const d=state.daily;
+  if(state.step==='arc'){
+    if(id==='arcStart'&&!d.arc.start){d.arc.start=Date.now();held=false;persist();render();}return true;
+  }
   if(id==='spin'&&state.step==='season')state.spun=true;
   else if(id==='hideSeed')state.preview=false;
   else if(id==='sampleTap'&&state.step==='fieldGame'){
@@ -1422,14 +1761,20 @@ function dailyAction(id,arg){
   else if(state.step==='round'){
     if(id==='closeDay'){
       if(performance.now()-lastClose<330)return true;
-      lastClose=performance.now();closeDay();
+      lastClose=performance.now();
+      if(state.round===state.days&&!d.calendarDone)startArc('harvest',{type:'calendar'});else closeDay();
     }else if(id==='showTask')d.open=d.open===arg?null:arg;
     else if(id==='advance')advanceTask(arg);
-    else if(id==='feed')dailyFeed(Number(arg));
+    else if(id==='hirePrune')hirePrune();
+    else if(id==='guard'&&d.guardOffer){d.guardOffer=null;startArc('guard',{type:'guard'});}
+    else if(id==='inspect'){const index=Number(arg);if(d.ap&&d.inspections.includes(index)&&!d.inspected.includes(index))startArc('look',{type:'inspect',index},state.round-1);}
+    else if(id==='feed'){const value=Number(arg);if(!d.fed&&d.ap>=daily.applyAP&&state.coins>=feedPrice(value))startArc('feed',{type:'feed',value,span:state.days-1},state.round-1);}
     else if(id==='water'){
-      if(d.water==null){if(!d.ap)return true;d.ap--;}
-      d.water=Number(arg);
-    }else if(id==='treat'){const [event,i]=arg.split(',');dailyTreat(event,Number(i));}
+      if(d.water==null && d.ap){
+        const band=currentBand(daily.water),i=daily.water.indexOf(band),start=calendarDay(band[0]);
+        startArc(band[2]==='net'?'net':'water',{type:'water',value:Number(arg),span:calendarDay(daily.water[i+1]?.[0]??daily.baseDays)-start},state.round-start);
+      }else if(d.water!=null)d.water=Number(arg);
+    }else if(id==='treat'){const [id,i]=arg.split(',');const e=d.ongoing[id];if(e&&!e.treated)startArc(id.startsWith('pest')?'plane':id,{type:'event',id,index:Number(i)},state.round-e.since);}
     else if(id==='dayJob'){
       if(!d.ongoing[arg]||d.ap<daily.jobAP)return true;
       d.ap-=daily.jobAP;delete d.ongoing[arg];startMini(arg);
@@ -1481,19 +1826,18 @@ app.addEventListener('click', ev => {
       }
       break;
     case 'sow':
-      decision('自己播種育苗', () => sow(state.form));
+      startArc('sow',{type:'sow'});
       break;
     case 'test':
       if (state.step !== 'soil' || state.coins < D.cost.test) return;
       soilTest(true);
-      openFieldGame('sample');
+      startArc('sample',{type:'sample'});
       break;
     case 'noTest':
       soilTest(id === 'test');
       break;
     case 'amend':
-      if (state.form.improve?.includes(0) && state.limeQuality == null) {openFieldGame('lime');break;}
-      decision('土壤改良／' + ((state.form.improve || []).map(i => D.improvements[i].name).join('、') || '直接整地'), () => amend(state.form));
+      soilQueue();
       break;
     case 'loosen':
       checkpoint();
