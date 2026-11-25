@@ -8,14 +8,18 @@ const D = globalThis.StageData = {
     startSeason:1, // ST-0
     vigorByStar:[0,40,55,70,85,100], // P-1
     caps:[.5,.60,.75,.85,1], // 59列；交辦幼苗結算後60%
-    initialVigor:.7, root:60, // 92、93列
-    leafLimit:[25,40], seedLeaves:1, seedlingLeaves:4, // 94列
+    initialVigor:.7, root:60, strongRatio:.7,weakRatio:.4,droopRoot:30, // 99～100列；根系萎垂門檻背景暫定
+     // 92、93列
+    leafLimit:[25,40], seedLeaves:1, seedlingLeaves:4, leafPerDay:1, // 94列
+     // 94列
     scoreBands:[[90,2,1],[60,0,0],[30,-3,-1],[0,-6,-2]], // 58列：分數、一般數值、葉片
-    bossMultiplier:2, tipGoodBonus:2, tipPoorLoss:3, tipBadLoss:6, decisionLeafWeight:2, // 5-2、58列；T字非數值，著果率依一般分數
+    bossMultiplier:2, lowScore:30, goodScore:90, autoTopScore:60, setHalf:.5, // 58列、ST-4、5-2
+     tipGoodBonus:2, tipPoorLoss:3, tipBadLoss:6, decisionLeafWeight:2, // 5-2、58列；T字非數值，著果率依一般分數
     // 58列
     low:20, rescueTo:30, rescuePrice:50, rescueCount:1, retryCount:1, // C-6、確認
     bossBase:100, bossMin:60,bossMax:140, bossWin:60,bossPerfect:90, // 68列
-    intro:3000, repeatIntro:1000, defeat:2000, feedback:2700, // 84～87列
+    intro:3000, repeatIntro:1000, defeat:2000, feedback:2700, // 60、84～87列
+     // 84～87列
     snailChance:.4, snailBiteChance:.2, // 蝸牛未抓時咬苗機率，逐日設定32列背景暫定
     snailMiss:3, snailDamage:1, missingCost:20, missingPenalty:5, // 1-3、1-4
     breakChance:.3, breakLoss:[.1,.2,.3,.4,.5], // 102列
@@ -25,13 +29,17 @@ const D = globalThis.StageData = {
     setBands:[[90,95],[60,80],[30,50],[0,20]], // 5-B
     vineBossSetLoss:20, doubleSetBonus:10,doubleDisease:5,doubleBrix:-.5, // 3-B、確認
     pestTrigger:40,diseaseTrigger:40,fieldMax:100,weedStart:1,weedMax:5,weedTrigger:2,weedGrowth:1, // C-1～3
-    pestPrices:[60,40,30],diseasePrice:40,control:20,materialRate:.6,ignoredRise:15,ignoredVirus:10,weedPest:5, // C-1～3
+    pestPrices:[60,40,30],diseasePrice:40,control:20,materialRate:.6,ignoredRise:15, ignoredLeafLoss:1, // C-1、C-2
+    ignoredVirus:10,weedPest:5, // C-1～3
     jobMax:100, jobLimit:1, // C-5
     // ST-0、63列：配對未給田況點數；暫定映射（蟲／病）
     fieldByMatch:{'最適合':[15,15],'可以':[25,25],'勉強':[40,40],'不行':[45,50]},
     virusStart:0, // P-7
     // 操作調整暫定：沿用既有 arc 的目標及節奏；各模式可獨立調整
-    seconds:10, bossSeconds:12, missPenalty:.35, memoryShow:2.6, timingWidth:.15, timingGap:.35,
+    seconds:10, bossSeconds:12, wireTolerance:.12, wireHitRadius:.085, flashHitRadius:.085, flashLight:75, dropInterval:.58, dropSpeed:.65, catchRadius:.12, // 新玩法手感暫定，均可調
+     missPenalty:.35, memoryShow:2.6, // 操作暫定
+    greenByDifficulty:[1.2,1.1,1,.9,.8], jobPenalty:.1, jobTargets:8,jobDecoys:2, // 難度綠區倍率暫定；M-1/2 沿用逐日
+     timingWidth:.15, timingGap:.35,
     targets:{paint:9,slice:5,avoid:5,memory:4,order:5,trail:5,timing:4,find:3,scale:2,balance:7,plane:10,flash:6,cut:4,wire:5,catch:6},
     difficultyTime:[1.1,1.05,1,.95,.9], // 品種難度 1～5；暫定
     seasonsGreen:[.13,.14,.14,.14,.14,.13,.12,.14], // 63列；暫定
@@ -81,7 +89,8 @@ const D = globalThis.StageData = {
     'C-1':['防治：蟲'], 'C-2':['防治：病'], 'C-3':['除草'], 'C-5':['打工'], 'C-6':['補救']
   },
   fertilizer:{
-    price:40, tolerance:.15,jitter:.10,nMin:8,nMax:15, distractorGap:.30, classicLimit:.5, formulaAttempts:1000, randomP:[1,24], randomK:[1,30], // 生成安全上限（暫定）
+    price:40, tolerance:.15,jitter:.10,nMin:8,nMax:15, distractorGap:.30, classicLimit:.5, classicRatio:[.15,.4], classicK:[.6,2.1], // 17列；生成區間暫定
+     formulaAttempts:1000, randomP:[1,24], randomK:[1,30], // 生成安全上限（暫定）
     // 15～21列
     multipliers:[[90,1.5],[60,1],[0,.5]],
     allRatios:[['幼苗期',1,1],['生長期',.4,1.2],['抽藤期',.35,1],['授粉期',.3,1],['膨大期',.3,1.4],['硬化期',.35,1.8],['縱網期',.45,2.2],['橫網期',.45,2.6],['入甜期',.45,3]],
