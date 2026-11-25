@@ -12,7 +12,9 @@ const D = globalThis.StageData = {
      // 92、93列
     leafLimit:[25,40], seedLeaves:1, seedlingLeaves:4, leafPerDay:1, // 94列
      // 94列
-    scoreBands:[[90,2,1],[60,0,0],[30,-3,-1],[0,-6,-2]], // 58列：分數、一般數值、葉片
+    scoreBands:[[90,2],[60,0],[30,-3],[0,-6]], // 階段關卡第 58 列：分數、一般數值
+    leafSizeInitial:1, leafSizeReference:1, // 1125b／階段關卡第 94 列：開局大小、面積基準（暫定）
+    leafSizeMin:.6, leafSizeMax:1.2, leafSizeGain:.6, // 1125b／階段關卡第 94 列：大小下限、上限、公式增幅（暫定）
     bossMultiplier:2, lowScore:30, goodScore:90, autoTopScore:60, setHalf:.5, // 58列、ST-4、5-2
      tipGoodBonus:2, tipPoorLoss:3, tipBadLoss:6, decisionLeafWeight:2, // 5-2、58列；T字非數值，著果率依一般分數
     // 58列
@@ -87,7 +89,7 @@ const D = globalThis.StageData = {
     '1-3':['補苗','seed/memory','記住要補苗的穴位','vigor'], // 1-3
     '1-4':['抓蝸牛','snail/find','掀葉找蝸牛','root'], // 1-4
     '3-1':['固定瓜藤','vine','引蔓、固定瓜藤','vigor'], // 3-1
-    '3-2':['摘除側芽','prune','剪掉側芽，保留主蔓','leaves'], // 3-2
+    '3-2':['摘除側芽','prune','剪掉側芽，保留主蔓','vigor'], // 3-2
     '3-3':['施肥','FZ-3'], '5-1':['授粉方式'], '5-2':['結果蔓摘心','fruitTip','保留結果蔓的葉片，剪掉頂芽','set','tstem'], '5-3':['施肥','FZ-4'], // 5-1～3
     'C-1':['防治：蟲'], 'C-2':['防治：病'], 'C-3':['除草'], 'C-5':['打工'], 'C-6':['補救']
   },
@@ -111,7 +113,7 @@ const D = globalThis.StageData = {
   },
   bosses:{
     'B-1':{name:'蝸牛大王',mode:'snail/flash',intro:'嘿嘿，剛種的嫩苗最好吃了。',win:'手電筒太亮了…我的眼睛…',lose:'明天晚上我還會再來～',lesson:'蝸牛晚上才出來，傍晚、晚上巡田最抓得到。',effects:['root','vigor'],hp:{caught:-20,plant:-10,ignored:30}}, // B-1
-    'B-3':{name:'徒長藤魔',mode:'bud2/avoid',intro:'藤長越多越好，對吧？',win:'我的側芽…全被剪光了…',lose:'嘿嘿，剩下的藤夠我長了。',lesson:'側芽不剪，養分全被藤搶走，瓜就沒得吃。',effects:['leaves','vigor'],hp:{prune:-20,classic:30,correct:-10,heal:10}}, // B-3
+    'B-3':{name:'徒長藤魔',mode:'bud2/avoid',intro:'藤長越多越好，對吧？',win:'我的側芽…全被剪光了…',lose:'嘿嘿，剩下的藤夠我長了。',lesson:'側芽不剪，養分全被藤搶走，瓜就沒得吃。',effects:['vigor'],hp:{prune:-20,classic:30,correct:-10,heal:10}}, // B-3
     'B-5':{name:'落花風妖',mode:'poll/wire',beeMode:'bee/catch',intro:'花開再多，我一口氣全吹掉。',win:'這朵花…居然坐住了…',lose:'呼～花都被我吹走啦！',lesson:'開花時氮太多、授粉沒做好，花就坐不住。',effects:[],hp:{tip:-10,classic:30,correct:-10}} // B-5
   }
 };

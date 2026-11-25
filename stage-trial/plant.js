@@ -10,7 +10,7 @@ const StageArt=(()=>{
    let x=trunks===2?138+k*84:180, count=trunks===2?Math.floor((n+1-k)/2):n,top=base-h;
    out+='<path d="M'+x+' 18V'+base+'" stroke="#a7b4a0" stroke-dasharray="3 4"/><path d="M180 '+base+' Q'+x+' '+(base-18)+' '+x+' '+top+'" fill="none" stroke="'+color+'" stroke-width="'+(strong?6:weak?2.5:4)+'" stroke-linecap="round"/>';
    for(let i=0;i<count;i++){
-    const yy=base-12-(h-10)*i/Math.max(1,count),xx=x+(i%2?3:-3),angle=(i%2?55:-55)+(droop?(i%2?80:-80):0),scale=(n<5?.48:.59)*(s.leggy?1.13:1);
+    const yy=base-12-(h-10)*i/Math.max(1,count),xx=x+(i%2?3:-3),angle=(i%2?55:-55)+(droop?(i%2?80:-80):0),scale=(n<5?.48:.59)*(s.leafSize??R.leafSizeInitial)*(s.leggy?1.13:1);
     out+=leaf(xx,yy,angle,scale,color,s.disease>=R.diseaseTrigger&&i%4===0,s.snailBite&&i%3===0,s.pests>=R.pestTrigger&&i%3===0);
    }
   }
