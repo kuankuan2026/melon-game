@@ -4,11 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>植日生｜點陣風樣板</title>
-<link rel="stylesheet" href="art-test.css">
-<script src="sprites.js" defer></script>
-<script src="mascots.js" defer></script>
-<script src="guanguan.js" defer></script>
-<script src="boss.js" defer></script>
+<link rel="stylesheet" href="art-test.css?v=art-install-1">
+<script src="gameData.js?v=art-install-1" defer></script>
+<script src="plants.js?v=art-install-1" defer></script>
+<script src="snail.js?v=art-install-1" defer></script>
+<script src="plant.js?v=art-install-1" defer></script>
+<script src="mascots.js?v=art-install-1" defer></script>
+<script src="guanguan.js?v=art-install-1" defer></script>
+<script src="boss.js?v=art-install-1" defer></script>
 </head>
 <body>
 <header class="top"><div><strong>植日生</strong><span>洋香瓜遊戲</span></div><a href="#palette">看色票</a></header>
@@ -78,34 +81,35 @@
 </section>
 <section class="hero" aria-labelledby="title">
 <div class="hero-copy"><p class="kicker">溫室裡的植日生</p><h1 id="title">點陣風樣板</h1></div>
-<canvas class="scene" width="320" height="84" data-sprite="field" aria-hidden="true"></canvas>
+
 <div class="lineup" aria-label="四位角色">
-<figure><canvas width="32" height="32" data-sprite="guaji" aria-hidden="true"></canvas><figcaption>瓜吉<small>開局與旁白</small></figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="tomato" aria-hidden="true"></canvas><figcaption>歡茄<small>高分喝采</small></figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="garlic" aria-hidden="true"></canvas><figcaption>蒜淘<small>打工與暖場</small></figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="zucchini" aria-hidden="true"></canvas><figcaption>櫛客<small>提醒與分析</small></figcaption></figure>
+<figure><canvas data-mascot="guaji" class="sample-mascot" aria-hidden="true"></canvas><figcaption>瓜吉<small>開局與旁白</small></figcaption></figure>
+<figure><canvas data-mascot="tomato" class="sample-mascot" aria-hidden="true"></canvas><figcaption>歡茄<small>高分喝采</small></figcaption></figure>
+<figure><canvas data-mascot="garlic" class="sample-mascot" aria-hidden="true"></canvas><figcaption>蒜淘<small>打工與暖場</small></figcaption></figure>
+<figure><canvas data-mascot="zucchini" class="sample-mascot" aria-hidden="true"></canvas><figcaption>櫛客<small>提醒與分析</small></figcaption></figure>
 </div>
 </section>
 <div class="grid">
 <section class="panel" aria-labelledby="dialog-title"><h2 id="dialog-title">對話、字型與按鈕</h2>
-<div class="speech"><canvas width="32" height="32" data-sprite="guaji" aria-hidden="true"></canvas><div><strong>瓜吉</strong><p>今天陽光剛剛好，我陪你去溫室看看小苗。</p></div></div>
+<div class="speech"><canvas data-mascot="guaji" class="sample-mascot" aria-hidden="true"></canvas><div><strong>瓜吉</strong><p>今天陽光剛剛好，我陪你去溫室看看小苗。</p></div></div>
 <div class="controls"><a class="button primary" href="#plants">看看瓜苗</a><a class="button secondary" href="#bosses">看看頭目</a><button type="button" disabled>金幣不足</button></div>
 <div class="type"><strong>今天來種瓜</strong><span>翻土拌肥　幼苗期　金幣 1000</span><small>俐方體 11 號衍生字型</small></div>
 </section>
-<section class="panel teacher"><h2>冠冠小教室</h2><figure><canvas width="32" height="32" data-sprite="kuan" aria-hidden="true"></canvas><figcaption>農夫冠冠</figcaption></figure><p>草帽、綠帽沿、白背心、藍褲子。</p></section>
+<section class="panel teacher"><h2>冠冠小教室</h2><figure><canvas data-guanguan class="sample-teacher" aria-hidden="true"></canvas><figcaption>農夫冠冠</figcaption></figure><p>漁夫帽、圓眼鏡、橄欖綠上衣。</p></section>
 </div>
 <section class="panel" id="plants"><h2>植株狀態</h2>
 <div class="examples plants">
-<figure><canvas width="32" height="32" data-sprite="healthy" aria-hidden="true"></canvas><figcaption>健康</figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="weak" aria-hidden="true"></canvas><figcaption>生長勢弱</figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="droop" aria-hidden="true"></canvas><figcaption>萎垂</figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="smallLeaf" aria-hidden="true"></canvas><figcaption>小葉</figcaption></figure>
-<figure><canvas width="32" height="32" data-sprite="largeLeaf" aria-hidden="true"></canvas><figcaption>大葉</figcaption></figure>
+<figure><canvas data-sample-plant="healthy" aria-hidden="true"></canvas><figcaption>健康</figcaption></figure>
+<figure><canvas data-sample-plant="weak" aria-hidden="true"></canvas><figcaption>生長勢弱</figcaption></figure>
+<figure><canvas data-sample-plant="droop" aria-hidden="true"></canvas><figcaption>萎垂</figcaption></figure>
+<figure><canvas data-sample-plant="smallLeaf" aria-hidden="true"></canvas><figcaption>小葉</figcaption></figure>
+<figure><canvas data-sample-plant="largeLeaf" aria-hidden="true"></canvas><figcaption>大葉</figcaption></figure>
 </div></section>
 <section class="panel" id="bosses"><h2>頭目立繪</h2>
 <div class="examples bosses">
-<figure><div class="portrait snail"><canvas width="64" height="64" data-sprite="snail" aria-hidden="true"></canvas></div><figcaption>蝸牛大王</figcaption></figure>
-<figure><div class="portrait harvest"><canvas width="64" height="64" data-sprite="finalKuan" aria-hidden="true"></canvas></div><figcaption>最終大魔王冠冠<small>採收評鑑立繪草案</small></figcaption></figure>
+<figure><div class="portrait snail"><canvas width="56" height="56" data-snail="normal" aria-hidden="true"></canvas></div><figcaption>蝸牛大王</figcaption></figure>
+<figure><div class="portrait snail"><canvas width="56" height="56" data-snail="defeated" aria-hidden="true"></canvas></div><figcaption>倒下</figcaption></figure>
+<figure><div class="portrait snail"><canvas width="56" height="56" data-snail="fled" aria-hidden="true"></canvas></div><figcaption>逃走</figcaption></figure>
 </div></section>
 <section class="panel" id="palette"><h2>品牌色票</h2><ul class="swatches">
 <li><i style="--swatch:#3D9257"></i><span>品牌深綠</span><small>#3D9257</small></li>
@@ -128,7 +132,15 @@ document.addEventListener("DOMContentLoaded", () => {
   for (const canvas of document.querySelectorAll("[data-mascot]")) {
     drawMascot(canvas, canvas.dataset.mascot);
   }
-  drawGuanguan(document.querySelector("[data-guanguan]"));
+  for (const canvas of document.querySelectorAll("[data-guanguan]")) drawGuanguan(canvas);
+  const sample={leaves:4,leafSize:1,stage:1,root:60,vigor:50,cap:70};
+  const states={healthy:{},weak:{vigor:17},droop:{root:20},smallLeaf:{leafSize:.8},largeLeaf:{leafSize:1.15}};
+  for (const marker of document.querySelectorAll("[data-sample-plant]")) {
+    const wrapper=document.createElement("div");
+    wrapper.innerHTML=StageArt.plant({...sample,...states[marker.dataset.samplePlant]});
+    marker.replaceWith(wrapper);
+  }
+  StageArt.mount(document);
   for (const canvas of document.querySelectorAll("[data-boss-gg]")) {
     drawBossGG(canvas, Number(canvas.dataset.bossGg));
   }

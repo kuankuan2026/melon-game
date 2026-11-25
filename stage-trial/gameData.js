@@ -44,6 +44,8 @@ const D = globalThis.StageData = {
     timingWidth:.15, timingGap:.35, // 藤夾、倒肥停手操作暫定
     pourAttempts:4, // FZ-4
     beePoisonFirst:0, beePoisonSpacing:.15, // 5-1：藥滴自開場分散至戰鬥前段，出場節奏暫定
+    artSmallLeaf:.85, artLargeLeaf:1.1, // 美術安裝：大小葉顯示門檻（暫定）
+    artResultNodes:[11,15], // 美術安裝：由下往上的展示節位，日後改為玩家選擇
     virusVisible:40, // 階段關卡 95 列：病毒顯示門檻暫定
     targets:{paint:9,slice:5,avoid:5,memory:4,order:5,trail:5,timing:4,find:3,scale:2,balance:7,plane:10,flash:6,cut:4,wire:5,catch:6},
     difficultyTime:[1.1,1.05,1,.95,.9], // 品種難度 1～5；暫定

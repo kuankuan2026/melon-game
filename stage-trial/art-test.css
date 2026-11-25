@@ -1,4 +1,4 @@
-@font-face{font-family:"Zhirisheng Pixel";src:url("art-font.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Zhirisheng Pixel";src:url("art-font.woff2?v=art-install-1") format("woff2");font-display:swap}
 :root{color-scheme:light;--ink:#1a1a1a;--deep:#235738;--green:#3d9257;--yellow:#fabf0d;--canvas:#f7f5e8;--rule:#cdd8b5}
 *{box-sizing:border-box}
 html{background:var(--canvas);color:var(--ink)}
@@ -69,3 +69,16 @@ footer{text-align:center;margin:22px 0 8px}
 .boss-demo-hp{width:calc(100% - 12px);max-width:168px;min-height:26px;border:2px solid #1A1A1A;border-radius:0;background:#FABF0D;color:#1A1A1A;display:grid;place-items:center}
 .boss-demo figure:nth-child(2) .boss-demo-hp{background:#EA5A5A}
 @media(max-width:600px){.boss-demo{margin-inline:-10px;padding-inline:4px}.boss-demo h2{padding-inline:8px}.boss-demo-grid{gap:4px}}
+
+/* 樣板沿用遊戲的點陣植株，格寬不足時可捲動查看。 */
+.plants{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.plants figure .plant-frame{width:100%;height:176px;overflow:auto}
+.plants figure .plant-pixels{width:320px;height:auto;max-width:none}
+.plants figure:nth-child(2n) .plant-frame{background:#DDECB3}
+.portrait canvas[data-snail]{width:112px;height:112px}
+.sample-mascot{width:96px;height:auto}.sample-mascot[width="25"]{width:50px}
+.speech .sample-mascot{width:96px;height:auto}.speech{grid-template-columns:96px 1fr}
+.sample-teacher{width:88px;height:112px}
+@media(max-width:680px){.lineup .sample-mascot{width:96px;height:auto}.lineup .sample-mascot[width="25"]{width:50px}.lineup{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.plants{grid-template-columns:1fr}.plants figure{width:min(100%,344px);justify-self:center}.plants figure .plant-pixels{margin:auto}.boss-demo-hp{position:relative}.boss-demo-hp span{z-index:1;background:inherit;padding:0 4px}.boss-demo-hp .divider{position:absolute;top:0;bottom:0;width:1px;background:#1A1A1A}

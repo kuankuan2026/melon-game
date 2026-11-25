@@ -45,7 +45,11 @@ const snapshot=()=>{let o=copy(s);delete o.checkpoint;return o};
 const measure=()=>({vigor:s.vigor,root:s.root,leaves:area(),pests:s.pests,disease:s.disease,virus:s.virus,weed:s.weed,set:s.set,coins:s.coins,tstem:s.tstem?1:0});
 const htmlButton=(label,id,disabled=false,secondary=false)=>'<button type="button" data-act="'+esc(id)+'" '+(disabled?'disabled':'')+' class="'+(secondary?'secondary':'')+'">'+esc(label)+'</button>';
 const heading=(small,title)=>'<div class="eyebrow">'+esc(small)+'</div><h1>'+esc(title)+'</h1>';
-const lesson=text=>'<div class="lesson"><b>冠冠小教室</b><p>'+esc(text)+'</p></div>';
+const speech=(actor,text)=>'<div class="game-speech">'+StageArt.actor(actor)+'<p>'+esc(text)+'</p></div>';
+const mascotLineup=()=>'<div class="game-lineup">'+['guaji','tomato','garlic','zucchini'].map(StageArt.actor).join('')+'</div>';
+const praise=score=>score>=R.goodScore?speech('tomato','漂亮！這一步做得真好。'):'';
+const typed=text=>'<span aria-label="'+esc(text)+'">'+Array.from(text,(ch,i)=>'<span aria-hidden="true" style="--char:'+i+'">'+esc(ch)+'</span>').join('')+'</span>';
+const lesson=text=>'<div class="lesson"><b>冠冠小教室</b>'+speech('guanguan',text)+'</div>';
 const p=text=>'<p>'+esc(text)+'</p>';
 const opt=(name,price,id)=>htmlButton(name+(price?'　◉ '+price:'　免費'),id,price>s.coins,true);
 function stopTimer(){clearTimeout(timer);paintToken++}
@@ -117,7 +121,8 @@ function begin(){
 }
 function grow(n){if(!s.broken)delta({leaves:n})}
 function beginStage(){
- const before=measure();s.leggy=false;s.snailBite=false;s.flags={};s.jobUsed=0;s.queue=[...D.stages[s.stage].fixed];s.idx=0;s.triggered=false;s.stageGrowthDone=false;s.task=null;s.spec=null;s.result=null;s.boss=null;s.rescueKeys=null;s.stageStart=measure();s.stagePlant=copy({vigor:s.vigor,root:s.root,leaves:s.leaves,leafSize:s.leafSize,cap:s.cap,pests:s.pests,disease:s.disease,weed:s.weed,virus:s.virus,stage:s.stage,fruit:s.fruit,training:s.training,planted:s.planted,doubleStarted:s.doubleStarted,broken:s.broken});
+ if(s.stage===2&&s.fruitNode==null)s.fruitNode=rand(...R.artResultNodes);
+ const before=measure();s.leggy=false;s.snailBite=false;s.flags={};s.jobUsed=0;s.queue=[...D.stages[s.stage].fixed];s.idx=0;s.triggered=false;s.stageGrowthDone=false;s.task=null;s.spec=null;s.result=null;s.boss=null;s.rescueKeys=null;s.stageStart=measure();s.stagePlant=copy({vigor:s.vigor,root:s.root,leaves:s.leaves,leafSize:s.leafSize,cap:s.cap,pests:s.pests,disease:s.disease,weed:s.weed,virus:s.virus,stage:s.stage,fruit:s.fruit,fruitNode:s.fruitNode,training:s.training,planted:s.planted,doubleStarted:s.doubleStarted,broken:s.broken});
  delta(s.deferred);s.deferred={pests:0,disease:0};s.weed=clamp(s.weed+R.weedGrowth,R.weedStart,R.weedMax);
  if(s.training==='double')delta({disease:R.doubleDisease});
  if(s.stage===0){s.flags.snail=Math.random()<R.snailChance}
@@ -340,9 +345,9 @@ function rescue(yes){
 }
 function bars(){
  const data=[['生長勢',s.vigor,s.cap],['根系',s.root,R.fieldMax],['葉面積',area(),R.fieldMax]];
- return '<div class="bars">'+data.map(([n,v,max])=>'<div><span>'+n+'</span><div class="track"><i style="width:'+clamp(v/max*100,0,100)+'%"></i></div>'+(debug?'<small>'+round(v)+'/'+max+'</small>':'')+'</div>').join('')+'</div>';
+ return '<div class="bars">'+data.map(([n,v,max])=>'<div><span>'+n+'</span><div class="track'+(v<R.low?' low-track':'')+'" role="progressbar" aria-label="'+n+'" aria-valuenow="'+round(v)+'" aria-valuemax="'+max+'"><i style="width:'+clamp(v/max*100,0,100)+'%"></i></div>'+(n==='葉面積'?'<small class="leaf-count">'+s.leaves+' 片</small>':'')+(debug?'<small>'+round(v)+'/'+max+'</small>':'')+'</div>').join('')+'</div>';
 }
-function header(){return '<header><span>植日生・三關試玩</span><b>◉ '+s.coins+'</b></header><div class="steps">'+D.stages.map((v,i)=>'<span class="'+(i===s.stage?'current':i<s.stage?'done':'')+'">'+(i+1)+' '+v.name+'</span>').join('')+'</div>'}
+function header(){return '<header><span>'+D.stages[s.stage].name+'</span><b>◉ '+s.coins+'</b></header><div class="steps">'+D.stages.map((v,i)=>'<span class="'+(i===s.stage?'current':i<s.stage?'done':'')+'">'+(i+1)+' '+v.name+'</span>').join('')+'</div>'}
 function field(){return StageArt.plant(s)+bars()}
 function changes(c,includeHidden=false,precise=false){
  const keys=includeHidden?Object.keys(labels):['vigor','root','leaves'];
@@ -357,7 +362,7 @@ function ranked(count,stageOnly=false){
 function taskView(){
  const id=s.task,h=heading(D.stages[s.stage].name+'・田間工作',names[id]),buttons=(...a)=>'<div class="choices">'+a.join('')+'</div>';
  if(['1-1','3-3','5-3'].includes(id)){
-  return h+p('選一袋肥料。看看三種成分的比例，選好再開始施肥。')+'<div class="fertGrid">'+s.options.map((b,i)=>'<button class="fertBag" data-act="bag:'+i+'" '+(s.coins<F.price?'disabled':'')+'><svg viewBox="0 0 120 105" aria-hidden="true"><path d="M26 6H94L89 18Q108 56 102 98H18Q12 56 31 18Z" fill="#e8dfc3" stroke="#a09066" stroke-width="2"/><rect x="20" y="33" width="80" height="45" rx="5" fill="#faf7ed"/><text x="60" y="46" font-size="10" text-anchor="middle" fill="#4a593d">N-P-K</text><text x="60" y="66" font-size="17" font-weight="bold" text-anchor="middle" fill="#374c37">'+b.values.join('-')+'</text></svg>'+b.values.map((v,j)=>'<span class="npk"><small>'+['N','P','K'][j]+'</small><i style="width:'+v/Math.max(...b.values)*80+'%;background:'+['#568b62','#bf9146','#638db3'][j]+'"></i></span>').join('')+'<small>◉ '+F.price+'</small></button>').join('')+'</div>'+htmlButton('這次不施肥','bag:-1',false,true);
+  return h+p('選一袋肥料。看看三種成分的比例，選好再開始施肥。')+'<div class="fertGrid">'+s.options.map((b,i)=>'<button class="fertBag" data-act="bag:'+i+'" '+(s.coins<F.price?'disabled':'')+'><svg viewBox="0 0 120 105" aria-hidden="true"><path d="M26 6H94L89 18Q108 56 102 98H18Q12 56 31 18Z" fill="#FFF4CC" stroke="#1A1A1A" stroke-width="2"/><rect x="20" y="33" width="80" height="45"  fill="#FFFFFF"/><text x="60" y="46" font-size="10" text-anchor="middle" fill="#1A1A1A">N-P-K</text><text x="60" y="66" font-size="17" font-weight="bold" text-anchor="middle" fill="#1A1A1A">'+b.values.join('-')+'</text></svg>'+b.values.map((v,j)=>'<span class="npk"><small>'+['N','P','K'][j]+'</small><i style="width:'+v/Math.max(...b.values)*80+'%;background:'+['#3D9257','#FABF0D','#EA5A5A'][j]+'"></i></span>').join('')+'<small>◉ '+F.price+'</small></button>').join('')+'</div>'+htmlButton('這次不施肥','bag:-1',false,true);
  }
  if(id==='1-2')return h+p('定植前先選整枝方式。')+buttons(opt('單蔓整枝',0,'option:single'),opt('雙蔓整枝',0,'option:double'));
  if(id==='1-3')return h+p('畦上有一個空穴。')+buttons(opt('補苗',R.missingCost,'option:yes'),htmlButton('不補','ignore',false,true));
@@ -375,32 +380,33 @@ function taskView(){
 }
 function bossView(outcome=false){
  const b=D.bosses[s.boss.id],hp=s.boss.hp,score=s.boss.score;
- return '<section class="bossScene '+(outcome?(score>=R.bossWin?'defeated':'escaped'):'arrival')+'"><div class="warning">'+(outcome?(score>=R.bossPerfect?'完美擊破！':score>=R.bossWin?'擊敗！':'被牠跑了…'):'BOSS 出現')+'</div>'+StageArt.boss(s.boss.id)+'<h2>'+esc(b.name)+'</h2><div class="dialog">'+esc(outcome?(score>=R.bossWin?b.win:b.lose):b.intro)+'</div><div class="hp"><i style="width:'+(outcome?s.boss.remaining/hp:hp/R.bossMax)*100+'%"></i></div><b>'+(outcome?s.boss.remaining:hp)+' HP</b>'+(!outcome?'<div class="hpReasons">'+s.boss.reasons.map(x=>'<p>'+esc(x.text)+'：'+(x.n>0?'+':'')+x.n+'</p>').join('')+'</div>':'')+'</section>'+htmlButton(outcome?'跳過演出':'開始戰鬥',outcome?'bossResult':'bossStart');
+ return (!outcome?speech('garlic','衝了啦！'):'')+'<section class="bossScene '+(outcome?(score>=R.bossWin?'defeated':'escaped'):'arrival')+'"><div class="warning">'+(outcome?(score>=R.bossPerfect?'完美擊破！':score>=R.bossWin?'擊敗！':'被牠跑了…'):'BOSS 出現')+'</div>'+StageArt.boss(s.boss.id,outcome?(score>=R.bossWin?'defeated':'fled'):'normal')+'<h2>'+esc(b.name)+'</h2><div class="dialog">'+(outcome?esc(score>=R.bossWin?b.win:b.lose):typed(b.intro))+'</div><div class="hp"><i style="width:'+(outcome?s.boss.remaining/hp:hp/R.bossMax)*100+'%"></i></div><b>'+(outcome?s.boss.remaining:hp)+' HP</b>'+(!outcome?'<div class="hpReasons">'+s.boss.reasons.map(x=>'<p>'+esc(x.text)+'：'+(x.n>0?'+':'')+x.n+'</p>').join('')+'</div>':'')+'</section>'+htmlButton(outcome?'跳過演出':'開始戰鬥',outcome?'bossResult':'bossStart');
 }
 function render(){
  stopTimer();
  if(!s){
-  let old=restore();app.innerHTML=heading('植日生｜手機小遊戲','今天來種瓜')+p('這次先挑戰幼苗、抽藤、授粉三個階段。')+'<div class="period"><b>定植時段</b><p>'+esc(D.seasons[setup.season][0])+'</p></div>'+(debug?'<label>測試季節<select id="season">'+D.seasons.map((a,i)=>'<option value="'+i+'" '+(i===setup.season?'selected':'')+'>'+esc(a[0])+'</option>').join('')+'</select></label>':'')+'<h3>挑一個品種</h3><div class="varietyGrid">'+D.cultivars.map((c,i)=>'<button data-act="variety:'+i+'" class="secondary '+(setup.cultivar===i?'selected':'')+'">'+esc(c[0])+'</button>').join('')+'</div>'+htmlButton('開始種瓜','begin')+(old?htmlButton('繼續上次試玩','resume',false,true):'');
-  document.getElementById('season')?.addEventListener('change',e=>{setup.season=+e.target.value;render()});return;
+  delete app.dataset.screen;
+  let old=restore();app.innerHTML=heading('植日生｜手機小遊戲','今天來種瓜')+mascotLineup()+p('這次先挑戰幼苗、抽藤、授粉三個階段。')+'<div class="period"><b>定植時段</b><p>'+esc(D.seasons[setup.season][0])+'</p></div>'+(debug?'<label>測試季節<select id="season">'+D.seasons.map((a,i)=>'<option value="'+i+'" '+(i===setup.season?'selected':'')+'>'+esc(a[0])+'</option>').join('')+'</select></label>':'')+'<h3>挑一個品種</h3><div class="varietyGrid">'+D.cultivars.map((c,i)=>'<button data-act="variety:'+i+'" class="secondary '+(setup.cultivar===i?'selected':'')+'">'+esc(c[0])+'</button>').join('')+'</div>'+htmlButton('開始種瓜','begin')+(old?htmlButton('繼續上次試玩','resume',false,true):'');
+  document.getElementById('season')?.addEventListener('change',e=>{setup.season=+e.target.value;render()});StageArt.mount(app);return;
  }
  let h=header(),stage=D.stages[s.stage];
- if(s.view==='period')h+=heading('第 '+(s.stage+1)+' 關',stage.name)+field()+p(stage.text)+htmlButton('開始這個階段','next');
+ if(s.view==='period')h+=heading('第 '+(s.stage+1)+' 關',stage.name)+field()+speech('guaji',stage.text)+htmlButton('開始這個階段','next');
  else if(s.view==='task')h+=field()+taskView();
  else if(s.view==='ready'||s.view==='playing'){
   let spec=s.spec,repeat=seen['help:'+spec.mode];
   h+=heading(stage.name,spec.title)+(repeat?p(spec.hint.split('。')[0]+'。'):p(spec.hint))+htmlButton('開始','play')+'<div id="miniHost"></div>';
  }else if(s.view==='feedback'){
-  h+=heading('工作結算',s.result.title)+(s.result.score!=null?'<div class="score">'+s.result.score+' 分</div>':'')+changes(s.result.changes)+lesson(s.result.detail)+htmlButton('繼續','afterFeedback');
+  h+=heading('工作結算',s.result.title)+(s.result.score!=null?'<div class="score">'+s.result.score+' 分</div>':'')+changes(s.result.changes)+praise(s.result.score??0)+lesson(s.result.detail)+htmlButton('繼續','afterFeedback');
   schedule(afterFeedback,R.feedback);
  }else if(s.view==='bossIntro'){
   h+=bossView();schedule(()=>{app.querySelector('.arrival')?.classList.add('settled')},s.boss.repeat?R.repeatIntro:R.intro);
  }else if(s.view==='bossOutcome'){h+=bossView(true);schedule(()=>screen('bossResult'),R.defeat)}
  else if(s.view==='bossResult'){
-  const b=D.bosses[s.boss.id];h+=heading('Boss 結算',b.name)+'<div class="score">'+s.boss.score+' 分</div>'+p((s.boss.score>=R.bossPerfect?'完美擊破！':s.boss.score>=R.bossWin?'擊敗！':'被牠跑了…')+'　剩 '+s.boss.remaining+' HP')+changes(s.result.changes)+lesson(b.lesson)+(s.result.detail&&s.task!=='B-5'?p(s.result.detail):'')+(s.task==='B-5'?p(s.fruit?'有坐果！':'花掉了，沒有坐果。'):'')+htmlButton('階段結算','afterBoss');
+  const b=D.bosses[s.boss.id];h+=heading('Boss 結算',b.name)+'<div class="score">'+s.boss.score+' 分</div>'+p((s.boss.score>=R.bossPerfect?'完美擊破！':s.boss.score>=R.bossWin?'擊敗！':'被牠跑了…')+'　剩 '+s.boss.remaining+' HP')+changes(s.result.changes)+praise(s.boss.score)+lesson(b.lesson)+(s.result.detail&&s.task!=='B-5'?p(s.result.detail):'')+(s.task==='B-5'?p(s.fruit?'有坐果！':'花掉了，沒有坐果。'):'')+htmlButton('階段結算','afterBoss');
  }else if(s.view==='rescue'){
   const leafWarning=s.rescueKeys.includes('leaves');
   const canRecover=s.rescueKeys.some(key=>key!=='leaves');
-  h+=heading('植株警訊','瓜苗撐不住了')+field()+p(s.rescueKeys.map(k=>labels[k]).join('、')+'太低，這局還有一次補救機會。')+(s.rescueKeys.includes('vigor')&&s.cap<R.rescueTo?p('這個階段的生長勢最多補到 '+s.cap+'。'):'')+(leafWarning?p(s.broken?'藤折斷後，這株不會再長新葉。':s.leaves===0?'葉子已經掉光了。':'葉面積會隨自然長葉慢慢恢復。'):'')
+  h+=heading('植株警訊','瓜苗撐不住了')+field()+speech('zucchini',s.rescueKeys.map(k=>labels[k]).join('、')+'太低，這局還有一次補救機會。')+(s.rescueKeys.includes('vigor')&&s.cap<R.rescueTo?p('這個階段的生長勢最多補到 '+s.cap+'。'):'')+(leafWarning?p(s.broken?'藤折斷後，這株不會再長新葉。':s.leaves===0?'葉子已經掉光了。':'葉面積會隨自然長葉慢慢恢復。'):'')
    +(canRecover?htmlButton('補救　◉ '+R.rescuePrice,'rescueYes',s.coins<R.rescuePrice):'')
    +p('先略過也會用掉這局的補救機會。')+htmlButton('先不補救','rescueNo',false,true);
  }else if(s.view==='stageEnd'){
@@ -408,9 +414,9 @@ function render(){
   h+=heading('階段結算',stage.name+'・完成')+'<div class="compare"><div><small>階段開始</small>'+StageArt.plant(s.stagePlant)+'</div><div><small>現在</small>'+StageArt.plant(s)+'</div></div>'+bars()+changes(c)+ranked(1,true)+p(s.stageComment??'瓜苗還在努力，下一段要更用心。')+'<div class="capNotice">生長勢上限提升</div>'+htmlButton(s.stage===2?'看試玩結果':D.stages[s.stage+1].name+'・下一關','advance');
  }else if(s.view==='end'){
   const c={};for(const r of s.stageResults)for(const [k,v] of Object.entries(r.changes))c[k]=(c[k]||0)+v;if(s.fail&&s.stageResults.length<=s.stage){for(const [k,v] of Object.entries(measure()))c[k]=(c[k]||0)+v-s.stageStart[k];}
-  h+=heading(s.fail?'本局結束':'試玩完成',s.fail?s.fail.reason:'瓜坐住了！')+field()+(s.fail?lesson(s.fail.teaching):p('你已經通過幼苗、抽藤、授粉三關。'))+p('著果：'+(s.fruit===true?'成功':s.fruit===false?'未著果':'尚未進入著果判定'))+changes(c,false)+ranked(2)+p('正式版敬請期待')+(s.fail?htmlButton('從該階段開頭重來','retry',s.retryUsed>=R.retryCount||!s.checkpoint):'')+htmlButton('重新開始','home',false,true);
+  h+=heading(s.fail?'本局結束':'試玩完成',s.fail?s.fail.reason:'瓜坐住了！')+field()+(s.fail?speech('zucchini',s.fail.reason)+lesson(s.fail.teaching):p('你已經通過幼苗、抽藤、授粉三關。'))+p('著果：'+(s.fruit===true?'成功':s.fruit===false?'未著果':'尚未進入著果判定'))+changes(c,false)+ranked(2)+p('正式版敬請期待')+(s.fail?htmlButton('從該階段開頭重來','retry',s.retryUsed>=R.retryCount||!s.checkpoint):'')+htmlButton('重新開始','home',false,true);
  }
- app.innerHTML=h;renderDebug();
+ app.innerHTML=h;app.dataset.screen=s.view;StageArt.mount(app);renderDebug();
 }
 function renderDebug(){
  if(!debug||!s){debugEl.innerHTML='';return}
@@ -418,6 +424,7 @@ function renderDebug(){
  debugEl.innerHTML='<details '+(open?'open':'')+'><summary>debug｜全部數值與來源代號</summary><button data-act="download">下載本局 JSON</button><pre>'+esc(JSON.stringify({...s,checkpoint:undefined,leafCount:s.leaves,leafSize:round(s.leafSize),leafArea:round(area()),cultivarName:cultivar()[0],match:D.match[s.cultivar][s.season]},null,2))+'</pre></details>';
 }
 function play(){
+ app.dataset.screen='playing';
  if(!s.spec)return;markSeen('help:'+s.spec.mode);s.view='playing';save();
  app.innerHTML=header()+heading(D.stages[s.stage].name,s.spec.title)+'<div id="miniHost"></div>';
  StageMini.start(document.getElementById('miniHost'),s.spec,settleScore);
@@ -426,7 +433,7 @@ function action(id){
  const [cmd,arg]=id.split(':');
  if(cmd==='variety'){setup.cultivar=+arg;render();return}
  if(cmd==='begin'){begin();return}
- if(cmd==='resume'){s=restore();if(s.view==='playing')s.view='ready';render();return}
+ if(cmd==='resume'){s=restore();if(s.view==='playing')s.view='ready';if(s.stage===2&&s.fruitNode==null){s.fruitNode=rand(...R.artResultNodes);save()}render();return}
  if(cmd==='home'){StageMini.stop();stopTimer();s=null;write(D.saveKey,null);render();return}
  if(!s)return;
  if(cmd==='next'){if(s.view==='period'&&!checkHealth())next();}else if(cmd==='option')taskMini(s.task,arg);else if(cmd==='bag')chooseBag(+arg);else if(cmd==='ignore')ignore();
