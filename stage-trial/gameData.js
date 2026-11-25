@@ -21,7 +21,7 @@ const D = globalThis.StageData = {
     intro:3000, repeatIntro:1000, defeat:2000, feedback:2700, // 60、84～87列
      // 84～87列
     snailChance:.4, snailBiteChance:.2, // 蝸牛未抓時咬苗機率，逐日設定32列背景暫定
-    snailMiss:3, snailDamage:1, missingCost:20, missingPenalty:5, // 1-3、1-4
+    snailMiss:0, snailDamage:1, missingCost:20, missingPenalty:5, // 1-3、1-4：忽略蝸牛只透過 B-1 血量調整戰鬥目標
     breakChance:.3, breakLoss:[.1,.2,.3,.4,.5], // 102列
     pruneClean:10, pruneDisease:10, pruneVirus:10, pruneMissBelow:60, // 3-2；漏剪門檻暫定
     beePrice:100, beeBonus:10, beePoison:2, // 5-1、5-B
