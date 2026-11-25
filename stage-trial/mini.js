@@ -349,7 +349,7 @@ function hit(slot) {
  }
  function customTouch(g,x,y,down){
    if(g.mode==='flash'){
-     g.player=[x,y];let p=snailPos(g);if(Math.hypot(x-p[0],y-p[1])<.085&&g.lastSnail!==g.stage){g.lastSnail=g.stage;g.hit++;g.stage++;}
+     g.player=[x,y];let p=snailPos(g);if(Math.hypot(x-p[0],y-p[1])<.085&&g.lastSnail!==g.stage){g.lastSnail=g.stage;g.hit++;g.stage++;if(g.stage%9===0)g.sequence=sequence();}
    }else if(g.mode==='wire'){
      g.player=[x,y];let p=points(g),i=g.stage;
      if(i===0){if(Math.hypot(x-p[0][0],y-p[0][1])<.12)g.stage=1;return}
@@ -392,7 +392,7 @@ function hit(slot) {
    stop();host=hostEl;done=onDone;
    if(spec.job){startJob(spec.job);return}
    const [kind,mode]=spec.mode.split('/');
-   const base=rules.targets[mode]||1,goal=spec.hp?Math.max(1,Math.round(base*spec.hp/rules.bossBase)):base;
+   const base=rules.targets[mode]||1,goal=(spec.hp?Math.max(1,Math.round(base*spec.hp/rules.bossBase)):base)+(mode==='flash'?spec.extra||0:0);
    const duration=spec.hp?rules.bossSeconds:rules.seconds*rules.difficultyTime[(spec.difficulty||3)-1];
    g={kind,mode,title:spec.title,hint:spec.hint,label:spec.label||spec.title,variant:spec.variant||0,context:{id:'pest'+(spec.variant%3||0),value:1},goal,duration,green:spec.green||.14,hp:spec.hp||0,extra:spec.extra||0,sequence:sequence(),start:Date.now(),elapsed:0,hit:0,miss:0,marks:[],stage:0,values:[0,0,0],knob:.5,player:[.5,.82],shots:[],hazards:[],nextShot:0,nextHazard:0,frame:0,goodTime:0,totalTime:0,power:1,falling:[],nextDrop:0,drop:0,heal:0};
    state.daily.arc=g;
