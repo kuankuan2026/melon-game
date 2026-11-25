@@ -83,7 +83,7 @@ function beginStage(){
  if(s.training==='double')delta({disease:R.doubleDisease});
  if(s.stage===0){s.flags.snail=Math.random()<R.snailChance}
  s.flags.pestAtStart=s.pests>=R.pestTrigger;s.flags.diseaseAtStart=s.disease>=R.diseaseTrigger;
- if(s.stage>0){const days=D.seasons[s.season];grow(s.stage===1?days[3]:0)}
+ if(s.stage>0){const days=D.seasons[s.season];grow(s.stage===1?days[3]*R.leafPerDay:0)}
  s.view='period';s.checkpoint=snapshot();save();render();
 }
 function retry(){
@@ -116,7 +116,7 @@ function formFor(key,forms){
  return forms[offset%forms.length];
 }
 function setMini(mode,title,hint,label,extra=0,job=null){
- s.spec={mode,title,hint,label,extra,job,variant:rand(0,8),difficulty:cultivar()[4],green:R.seasonsGreen[s.season],hp:s.boss?.hp||0};
+ s.spec={mode,title,hint,label,extra,job,variant:rand(0,8),difficulty:cultivar()[4],green:R.seasonsGreen[s.season]*R.greenByDifficulty[cultivar()[4]-1],hp:s.boss?.hp||0};
  screen('ready');
 }
 function taskMini(id,option){
@@ -153,14 +153,14 @@ function ignore(){
  else if(id==='1-4'){
   s.flags.snailIgnored=true;s.snailBite=true;delta({leaves:-R.snailDamage});
   if(Math.random()<R.snailBiteChance&&!s.missing){s.missing=true;s.queue.splice(s.idx,0,'1-3')}
- }else if(id==='C-1'){delta({leaves:-1,virus:R.ignoredVirus});s.deferred.pests+=R.ignoredRise}
- else if(id==='C-2'){delta({leaves:-1});s.deferred.disease+=R.ignoredRise}
+ }else if(id==='C-1'){delta({leaves:-R.ignoredLeafLoss,virus:R.ignoredVirus});s.deferred.pests+=R.ignoredRise}
+ else if(id==='C-2'){delta({leaves:-R.ignoredLeafLoss});s.deferred.disease+=R.ignoredRise}
  else if(id==='C-3')delta({pests:s.weed*R.weedPest});
  simpleResult('先不處理',id==='1-4'?'蝸牛夜裡會再出來，下一關要小心。':'這次先略過，影響會記在田間紀錄。');
 }
 function classify(id,bag){
  const spec=F[id], [n,p,k]=bag.values,a=p/n,b=k/n;
- if(a>=spec.bounds[0][0]&&a<=spec.bounds[0][1]&&b>=spec.bounds[1][0]&&b<=spec.bounds[1][1])return 'correct';
+ if(a>=Math.round(spec.ratio[0]*(1-F.tolerance)*100)/100&&a<=Math.round(spec.ratio[0]*(1+F.tolerance)*100)/100&&b>=Math.round(spec.ratio[1]*(1-F.tolerance)*100)/100&&b<=Math.round(spec.ratio[1]*(1+F.tolerance)*100)/100)return 'correct';
  if(id==='FZ-1'?a<=F.classicLimit:a<=F.classicLimit&&b<=F.classicLimit)return 'classic';
  return 'other';
 }
@@ -172,12 +172,12 @@ function makeBags(id){
   let chosen=null;
   for(let tries=0;tries<F.formulaAttempts&&!chosen;tries++){
    let b;if(kind==='correct')b=fromRatio(...spec.ratio,F.jitter);
-   else if(kind==='classic')b=fromRatio(.15+Math.random()*.25,id==='FZ-1'?.6+Math.random()*1.5:.15+Math.random()*.25);
+   else if(kind==='classic')b=fromRatio(F.classicRatio[0]+Math.random()*(F.classicRatio[1]-F.classicRatio[0]),id==='FZ-1'?F.classicK[0]+Math.random()*(F.classicK[1]-F.classicK[0]):F.classicRatio[0]+Math.random()*(F.classicRatio[1]-F.classicRatio[0]));
    else if(tries<F.formulaAttempts/2){let [period,p,k]=pick(F.allRatios);b=fromRatio(p,k);b.period=period}
    else b={values:[rand(F.nMin,F.nMax),rand(...F.randomP),rand(...F.randomK)]};
    if(classify(id,b)===kind&&unique(b)&&(kind!=='other'||far(b)))chosen=b;
   }
-  if(!chosen){for(let n=F.nMin;n<=F.nMax&&!chosen;n++)for(let p=1;p<=24&&!chosen;p++)for(let k=1;k<=30&&!chosen;k++){let b={values:[n,p,k]};if(classify(id,b)===kind&&unique(b)&&(kind!=='other'||far(b)))chosen=b}}
+  if(!chosen){for(let n=F.nMin;n<=F.nMax&&!chosen;n++)for(let p=F.randomP[0];p<=F.randomP[1]&&!chosen;p++)for(let k=F.randomK[0];k<=F.randomK[1]&&!chosen;k++){let b={values:[n,p,k]};if(classify(id,b)===kind&&unique(b)&&(kind!=='other'||far(b)))chosen=b}}
   if(!chosen)throw Error('無法產生 '+id+' 肥料 '+kind);
   list.push(chosen);
  }
@@ -208,27 +208,27 @@ function settleScore(score){
   detail+=' '+spec.lesson;
  }else if(id==='1-2'){
   normal(score,['root']);s.flags.plantScore=score;
-  if(score<30){s.missing=true;detail='缺了一株苗，等等記得補苗。'}
+  if(score<R.lowScore){s.missing=true;detail='缺了一株苗，等等記得補苗。'}
  }else if(id==='1-3'){normal(score,['vigor']);s.missing=false}
  else if(id==='1-4'){normal(score,['root']);s.flags.snailCaught=true}
- else if(id==='3-1'){normal(score,['vigor']);if(score<30)detail=fold()}
+ else if(id==='3-1'){normal(score,['vigor']);if(score<R.lowScore)detail=fold()}
  else if(id==='3-2'){normal(score,['leaves']);s.flags.pruneScore=score;if(score<R.pruneMissBelow){delta({disease:R.pruneDisease});detail='側芽漏剪，枝葉太密。'}}
  else if(id==='5-2'){
   normal(score,['set']);s.flags.tipScore=score;
-  if(score<30){const roll=Math.random();if(roll<R.tipBad[0]){note(id,title,s.taskBefore,score,'結果蔓剪光');failure('結果蔓剪光了','摘心不是把整條結果蔓剪掉，葉片還要留著。',id);return}
+  if(score<R.lowScore){const roll=Math.random();if(roll<R.tipBad[0]){note(id,title,s.taskBefore,score,'結果蔓剪光');failure('結果蔓剪光了','摘心不是把整條結果蔓剪掉，葉片還要留著。',id);return}
    if(roll<R.tipBad[0]+R.tipBad[1]){s.halfSet=true;detail='結果蔓受傷，著果率減半。'}else{s.tstem=false;detail='失去 T 字果梗。'}}
  }else if(id==='C-1'||id==='C-2'){
   let amount=R.control*score/100*(s.flags.control==='material'?R.materialRate:1);delta({[id==='C-1'?'pests':'disease']:-amount});
   detail='防治完成度 '+score+'%。';
- }else if(id==='C-3')s.weed=score<30?Math.max(R.weedStart,s.weed-1):R.weedStart;
+ }else if(id==='C-3')s.weed=score<R.lowScore?Math.max(R.weedStart,s.weed-1):R.weedStart;
  else if(id==='C-5'){const pay=Math.round(R.jobMax*score/100);s.coins+=pay;detail='領到 '+pay+' 金幣。'}
  else if(D.bosses[id]){
   normal(score,D.bosses[id].effects,R.bossMultiplier);
-  if(id==='B-3'&&score<30){delta({set:-R.vineBossSetLoss});detail='授粉期著果率下降。 '+fold()}
+  if(id==='B-3'&&score<R.lowScore){delta({set:-R.vineBossSetLoss});detail='授粉期著果率下降。 '+fold()}
   s.boss.score=score;s.boss.remaining=score>=R.bossWin?0:Math.round(s.boss.hp*(1-score/100));
   if(id==='B-5'){
    let base=R.setBands.find(b=>score>=b[0])[1];
-   s.setChance=clamp((base+s.set+(s.flags.bee?R.beeBonus:0)+(s.training==='double'?R.doubleSetBonus:0))*(s.halfSet?.5:1),0,100);
+   s.setChance=clamp((base+s.set+(s.flags.bee?R.beeBonus:0)+(s.training==='double'?R.doubleSetBonus:0))*(s.halfSet?R.setHalf:1),0,100);
    s.fruit=Math.random()*100<s.setChance;
    detail=s.fruit?'花坐住了！':'花掉了，瓜沒坐住。';
   }
@@ -239,9 +239,9 @@ function settleScore(score){
 function bossIntro(){
  const id=s.task,b=D.bosses[id],reasons=[];s.taskBefore=measure();
  const add=(text,n)=>reasons.push({text,n});
- if(id==='B-1'){if(s.flags.snailCaught)add('你抓過蝸牛',b.hp.caught);if(s.flags.plantScore>=90)add('定植表現很好',b.hp.plant);if(s.flags.snailIgnored)add('蝸牛出現卻沒抓',b.hp.ignored)}
- if(id==='B-3'){if(s.flags.pruneScore>=90)add('摘除側芽表現很好',b.hp.prune);if(s.flags['FZ-3']==='classic')add('高氮肥造成徒長',b.hp.classic);if(s.flags['FZ-3']==='correct')add('施肥配方正確',b.hp.correct)}
- if(id==='B-5'){if(s.flags.tipScore>=90)add('結果蔓摘心表現很好',b.hp.tip);if(s.flags['FZ-4']==='classic')add('高氮肥增加落花',b.hp.classic);if(s.flags['FZ-4']==='correct')add('施肥配方正確',b.hp.correct)}
+ if(id==='B-1'){if(s.flags.snailCaught)add('你抓過蝸牛',b.hp.caught);if(s.flags.plantScore >= R.goodScore)add('定植表現很好',b.hp.plant);if(s.flags.snailIgnored)add('蝸牛出現卻沒抓',b.hp.ignored)}
+ if(id==='B-3'){if(s.flags.pruneScore >= R.goodScore)add('摘除側芽表現很好',b.hp.prune);if(s.flags['FZ-3']==='classic')add('高氮肥造成徒長',b.hp.classic);if(s.flags['FZ-3']==='correct')add('施肥配方正確',b.hp.correct)}
+ if(id==='B-5'){if(s.flags.tipScore >= R.goodScore)add('結果蔓摘心表現很好',b.hp.tip);if(s.flags['FZ-4']==='classic')add('高氮肥增加落花',b.hp.classic);if(s.flags['FZ-4']==='correct')add('施肥配方正確',b.hp.correct)}
  const hp=clamp(R.bossBase+reasons.reduce((a,b)=>a+b.n,0),R.bossMin,R.bossMax),repeat=!!seen[id];markSeen(id);
  s.boss={id,hp,reasons,repeat,score:null,remaining:hp};screen('bossIntro');
 }
@@ -262,12 +262,12 @@ function stageEnd(){
  if(!s.stageGrowthDone){s.stageGrowthDone=true;
  if(s.stage===0){
   grow(Math.max(0,R.seedlingLeaves-R.seedLeaves));if(s.training==='double'){s.doubleStarted=true;delta({disease:R.doubleDisease})}
- }else if(s.stage===1){grow(D.seasons[s.season][4])}
+ }else if(s.stage===1){grow(D.seasons[s.season][4]*R.leafPerDay)}
  }
  s.view='stageEndPending';if(checkHealth())return;
  const stage=D.stages[s.stage],before=s.stageStart,after=measure(),changes={};for(const k in after)if(after[k]!==before[k])changes[k]=round(after[k]-before[k]);
  s.stageResults.push({name:stage.name,changes});
- s.cap=capFor(stage.cap);if(s.stage===1){s.flags.autoTop=60;s.log.push({id:'4-B',title:'摘心期自動帶過',stage:s.stage,score:60,changes:{},impact:0,detail:'自動 60 分，生長勢上限提升至 85%'});s.cap=capFor(3)}
+ s.cap=capFor(stage.cap);if(s.stage===1){s.flags.autoTop=R.autoTopScore}
  screen('stageEnd');
 }
 function advanceStage(){
@@ -275,7 +275,7 @@ function advanceStage(){
   if(!s.fruit){failure('瓜沒坐住','花期避免氮太多，保留結果蔓，授粉工作要做好。','5-B');return}
   screen('end');return;
  }
- s.stage++;beginStage();
+ if(s.stage===1){s.log.push({id:'4-B',title:'摘心期自動帶過',stage:s.stage,score:R.autoTopScore,changes:{},impact:0,detail:'自動 '+R.autoTopScore+' 分，生長勢上限提升至 '+Math.round(R.caps[3]*100)+'%'});s.cap=capFor(3)}s.stage++;beginStage();
 }
 function rescue(yes){
  const before=measure();if(yes&&s.coins<R.rescuePrice)return;s.rescueUsed++;
@@ -283,7 +283,7 @@ function rescue(yes){
  note('C-6',yes?'緊急補救':'放棄補救',before,null);
  const ret=s.rescueReturn;s.rescueKeys=null;s.rescueReturn=null;
  if(s.vigor<=0||s.root<=0||(s.planted&&s.leaves<=0)){failure(s.stage===0?'苗被啃光了':'植株撐不住了','出現警訊時要及時補救。','C-6');return}
- if(ret==='bossResult'||ret==='stageEndPending')stageEnd();else next();
+ if(ret==='bossResult'||ret==='stageEndPending')stageEnd();else if(ret==='period'){screen('period')}else next();
 }
 function bars(){
  const data=[['生長勢',s.vigor,s.cap],['根系',s.root,R.fieldMax],['葉面積',s.leaves,limit()]];
@@ -372,9 +372,9 @@ function action(id){
  if(cmd==='resume'){s=restore();if(s.view==='playing')s.view='ready';render();return}
  if(cmd==='home'){StageMini.stop();stopTimer();s=null;write(D.saveKey,null);render();return}
  if(!s)return;
- if(cmd==='next'){if(!checkHealth())next();}else if(cmd==='option')taskMini(s.task,arg);else if(cmd==='bag')chooseBag(+arg);else if(cmd==='ignore')ignore();
- else if(cmd==='play')play();else if(cmd==='afterFeedback')afterFeedback();else if(cmd==='bossStart')startBoss();else if(cmd==='bossResult')screen('bossResult');
- else if(cmd==='afterBoss')afterBoss();else if(cmd==='advance'){s.jobOffer=null;advanceStage()}else if(cmd==='retry')retry();
+ if(cmd==='next'){if(s.view==='period'&&!checkHealth())next();}else if(cmd==='option')taskMini(s.task,arg);else if(cmd==='bag')chooseBag(+arg);else if(cmd==='ignore')ignore();
+ else if(cmd==='play')play();else if(cmd==='afterFeedback'&&s.view==='feedback')afterFeedback();else if(cmd==='bossStart')startBoss();else if(cmd==='bossResult')screen('bossResult');
+ else if(cmd==='afterBoss'&&s.view==='bossResult')afterBoss();else if(cmd==='advance'){s.jobOffer=null;advanceStage()}else if(cmd==='retry')retry();
  else if(cmd==='rescueYes')rescue(true);else if(cmd==='rescueNo')rescue(false);
  else if(cmd==='download'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(s,null,2)],{type:'application/json'}));a.href=url;a.download='stage-trial-log.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 }
