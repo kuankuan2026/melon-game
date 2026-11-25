@@ -1,5 +1,5 @@
 /* 1124b｜階段關卡、施肥小遊戲；全部為遊戲模擬值 */
-const D = {
+const D = globalThis.StageData = {
   version: 'stage-trial-1',
   saveKey: 'zhirisheng.stage-trial.v1',
   rules: {
@@ -11,11 +11,13 @@ const D = {
     initialVigor:.7, root:60, // 92、93列
     leafLimit:[25,40], seedLeaves:1, seedlingLeaves:4, // 94列
     scoreBands:[[90,2,1],[60,0,0],[30,-3,-1],[0,-6,-2]], // 58列：分數、一般數值、葉片
-    bossMultiplier:2, // 58列
+    bossMultiplier:2, tipGoodBonus:2, tipPoorLoss:3, tipBadLoss:6, decisionLeafWeight:2, // 5-2、58列；T字非數值，著果率依一般分數
+    // 58列
     low:20, rescueTo:30, rescuePrice:50, rescueCount:1, retryCount:1, // C-6、確認
     bossBase:100, bossMin:60,bossMax:140, bossWin:60,bossPerfect:90, // 68列
     intro:3000, repeatIntro:1000, defeat:2000, feedback:2700, // 84～87列
-    snailChance:.4, snailMiss:3, snailDamage:1, missingCost:20, missingPenalty:5, // 1-3、1-4
+    snailChance:.4, snailBiteChance:.2, // 蝸牛未抓時咬苗機率，逐日設定32列背景暫定
+    snailMiss:3, snailDamage:1, missingCost:20, missingPenalty:5, // 1-3、1-4
     breakChance:.3, breakLoss:[.1,.2,.3,.4,.5], // 102列
     pruneClean:10, pruneDisease:10, pruneVirus:10, pruneMissBelow:60, // 3-2；漏剪門檻暫定
     beePrice:100, beeBonus:10, beePoison:2, // 5-1、5-B
@@ -79,7 +81,8 @@ const D = {
     'C-1':['防治：蟲'], 'C-2':['防治：病'], 'C-3':['除草'], 'C-5':['打工'], 'C-6':['補救']
   },
   fertilizer:{
-    price:40, tolerance:.15,jitter:.10,nMin:8,nMax:15, distractorGap:.30, classicLimit:.5, // 15～21列
+    price:40, tolerance:.15,jitter:.10,nMin:8,nMax:15, distractorGap:.30, classicLimit:.5, formulaAttempts:1000, randomP:[1,24], randomK:[1,30], // 生成安全上限（暫定）
+    // 15～21列
     multipliers:[[90,1.5],[60,1],[0,.5]],
     allRatios:[['幼苗期',1,1],['生長期',.4,1.2],['抽藤期',.35,1],['授粉期',.3,1],['膨大期',.3,1.4],['硬化期',.35,1.8],['縱網期',.45,2.2],['橫網期',.45,2.6],['入甜期',.45,3]],
     'FZ-1':{ratio:[1,1],bounds:[[.85,1.15],[.85,1.15]],gain:{root:6},classic:{root:-6},mode:'lime/paint',title:'翻土拌肥',hint:'手指掃過畦面，把肥料拌進土裡。',lesson:'基肥三要素差不多一樣多就好，其中磷幫忙發根；磷在土裡不太會跑，所以要在種之前拌進土裡。'}, // FZ-1
